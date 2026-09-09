@@ -22,7 +22,8 @@ if [ -f "$build_root/build-observer/bin/vizdoom.app/Contents/MacOS/vizdoom" ]; t
 fi
 destination="$root/outputs/doom/native-spectator-v1/engine"
 mkdir -p "$destination"
-cp "$binary" "$destination/vizdoom"
+cp "$binary" "$destination/vizdoom.next"
+mv "$destination/vizdoom.next" "$destination/vizdoom"
 "$root/.venv-neural/bin/python" - "$destination" <<'PY'
 import shutil,sys
 from pathlib import Path

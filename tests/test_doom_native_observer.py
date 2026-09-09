@@ -39,3 +39,31 @@ def test_native_render_is_read_only_and_mirror_tracks_every_action():
             assert observer.error
             with pytest.raises(ObserverUnavailable):observer.render([0,0,60,0,0])
         finally:observer.close();primary.close()
+
+@pytest.mark.skipif(not ENGINE.is_file(),reason='Build the optional native observer first')
+def test_recorded_neural_stop_start_actions_do_not_change_weapon_bob():
+    """Regression: extra rendering used to advance P_BobWeapon at tick 1335."""
+    from pathlib import Path
+    import struct
+    fixture=json.loads((Path(__file__).parent/'fixtures/native-camera-actions.json').read_text())
+    primary=Game(seed=fixture['seed'],scenario='combat_survival',spectator=True)
+    observer=NativeObserver(primary,fixture['seed'],'combat_survival');nonce=0
+    try:
+        for turn,forward,attack in fixture['actions']:
+            if primary.observation()['finished']:
+                primary.new_episode();observer.advance(primary,reset=True)
+            for _ in range(3):
+                nonce+=1
+                observer.mirror.game.send_game_command(f'doomfly_view {nonce} 0 -70 70 90 20')
+                deadline=time.monotonic()+1
+                while time.monotonic()<deadline:
+                    if observer.output.exists():
+                        with observer.output.open('rb') as f:
+                            prefix=f.read(12);length=struct.unpack('<I',prefix[8:12])[0];meta=json.loads(f.read(length))
+                        if meta['nonce']==nonce:break
+                    time.sleep(.001)
+                else:pytest.fail('Observer render did not acknowledge completion')
+            action={'turn':turn,'forward':forward,'attack':bool(attack)}
+            primary.act(action);observer.advance(primary,action)
+            assert not observer.error
+    finally:observer.close();primary.close()

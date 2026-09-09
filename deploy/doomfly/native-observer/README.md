@@ -16,7 +16,10 @@ The private `doomfly_view` engine command renders while waiting for an action;
 it calls no ticker, save/load, or action function. It temporarily overrides
 renderer view coordinates and hides the first-person weapon. Actor coordinates,
 player view, controls and neural inputs are untouched. It restores the ordinary
-view before accepting the next action. The command bypasses the ordinary CVAR
+view and projection before accepting the next action. The restore render keeps
+weapon sprites suppressed: `P_BobWeapon` otherwise advances a static bobbing
+accumulator on each render, even without a game tic. This was reproduced with
+recorded neural actions and fixed without altering the primary engine. The command bypasses the ordinary CVAR
 refresh because reapplying `r_maxparticles` erases particles, even with the same
 value. That side effect was caught by the RGB equivalence test.
 

@@ -13,7 +13,7 @@
  extern bool vizNextTic;
 --- a/src/vizdoom/src/viz_main.cpp
 +++ b/src/vizdoom/src/viz_main.cpp
-@@ -524,3 +524,92 @@
+@@ -524,3 +524,95 @@
  
      VIZ_PrintFuncMsg(func, debug_msg);
  }
@@ -94,9 +94,12 @@
 +    header << "]}";
 +    screen->Unlock();
 +    doomflyObserverActive = false;
-+    r_drawplayersprites = weapon;
-+    // Restore the ordinary first-person screen before the next shared-memory update.
++    // Restore view/projection, keeping psprites suppressed. P_BobWeapon mutates
++    // a static smoothing accumulator every render, even without a game tic.
++    // Only the next ordinary action update may render/advance that accumulator.
++    // The published shared-memory RGB remains the original first-person frame.
 +    VIZ_D_ScreenDisplay();
++    r_drawplayersprites = weapon;
 +    std::string temporary = std::string(output)+".tmp", metadata = header.str();
 +    FILE *f = fopen(temporary.c_str(), "wb");
 +    if (!f) return;

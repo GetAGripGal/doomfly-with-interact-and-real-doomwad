@@ -14,11 +14,19 @@
     "camera does not advance game",
     "divergence disables observer"
   ],
-  "pytest": "13 passed in 14.77s",
+  "pytest": "14 passed in 46.82s",
   "initial_microbenchmark": {
     "ticks": 500,
     "renders": 100,
     "mean_render_ms": 4.6043,
     "max_render_ms": 10.4837
+  },
+  "regression": {
+    "cause": "P_BobWeapon static accumulator advanced during an extra restore render",
+    "recorded_neural_actions": 2574,
+    "native_camera_renders": 7722,
+    "first_person_rgb_matched_audit": true,
+    "mirror_rgb_exact": true,
+    "fix": "Suppress weapon drawing while restoring camera projection; regular action updates retain all original weapon rendering."
   }
 }
