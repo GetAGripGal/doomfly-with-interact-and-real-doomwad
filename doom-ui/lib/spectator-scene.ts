@@ -1,164 +1,131 @@
 import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createFly} from './fly-model';
-import {interpolatePose,type Pose,type SpectatorFrame} from './spectator';
+import type {SpectatorFrame,Pose} from './spectator';
 export type CameraMode='follow'|'free';
+type NativeFrame={version:1;nonce:number;width:640;height:480;camera:number[];projection:number[];image:string;depth:string;generated_at_ms:number;verified_ticks:number;player:Pose;game:{episode:number;tick:number;health:number;kills:number;ammo:number};weapon:{layer:number;width:number;height:number;left:number;top:number;sx:number;sy:number;flip:number;image:string}[]};
 const scale=1/32;
-const place=(o:T.Object3D,p:Pose,lift=0)=>{o.position.set(p.x*scale,p.z*scale+lift,-p.y*scale);o.rotation.y=p.angle*Math.PI/180;};
-function disposeTree(root:T.Object3D){
- const geometries=new Set<T.BufferGeometry>(),materials=new Set<T.Material>();
- root.traverse(o=>{const m=o as T.Mesh;if(m.geometry)geometries.add(m.geometry);if(m.material)(Array.isArray(m.material)?m.material:[m.material]).forEach(x=>materials.add(x));});
- geometries.forEach(g=>g.dispose());materials.forEach(m=>{const map=(m as T.MeshStandardMaterial).map;map?.dispose();m.dispose();});
+const place=(o:T.Object3D,p:Pose)=>{o.position.set(p.x*scale,p.z*scale+1.25,-p.y*scale);o.rotation.y=p.angle*Math.PI/180;};
+function imageAsset(url:string){return new Promise<HTMLImageElement>((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=url;});}
+function validFrame(v:NativeFrame){
+ return v?.version===1&&v.width===640&&v.height===480&&v.camera?.length===5&&v.projection?.length===4&&
+ [...v.camera,...v.projection,v.player?.x,v.player?.y,v.player?.z,v.player?.angle,v.generated_at_ms].every(Number.isFinite)&&
+ v.image?.startsWith('data:image/jpeg;base64,')&&v.depth?.startsWith('data:image/png;base64,')&&Array.isArray(v.weapon)&&v.weapon.length<=2&&
+ v.weapon.every(w=>[w.layer,w.width,w.height,w.left,w.top,w.sx,w.sy].every(Number.isFinite)&&w.width>0&&w.height>0&&w.width<=512&&w.height<=512&&w.image.startsWith('data:image/png;base64,'));
 }
 export function createSpectator(canvas:HTMLCanvasElement,onFailure:(message:string)=>void){
- const renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false});
- renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0x111518);renderer.outputColorSpace=T.SRGBColorSpace;
- const scene=new T.Scene();scene.fog=new T.Fog(0x111518,30,90);
- scene.add(new T.HemisphereLight(0xe1ecff,0x39302a,2));
- const key=new T.DirectionalLight(0xfff1d9,3.4);key.position.set(5,14,7);scene.add(key);
+ const output=canvas.getContext('2d')!;canvas.width=960;canvas.height=720;
+ const overlay=document.createElement('canvas');
+ const renderer=new T.WebGLRenderer({canvas:overlay,antialias:true,alpha:true});renderer.setSize(960,720);renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;
+ const scene=new T.Scene();scene.add(new T.HemisphereLight(0xe1ecff,0x39302a,2));
+ const light=new T.DirectionalLight(0xfff1d9,3.4);light.position.set(5,14,7);scene.add(light);
  const rim=new T.DirectionalLight(0xb9d8ff,2.7);rim.position.set(-7,5,-9);scene.add(rim);
- const camera=new T.PerspectiveCamera(48,1,.03,180);camera.position.set(3,2.7,4);
- const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.minDistance=.85;controls.maxDistance=65;controls.enablePan=false;
- const fly=createFly();fly.root.scale.setScalar(scale);scene.add(fly.root);fly.root.visible=false;
- const arena=new T.Group(),actors=new T.Group();scene.add(arena,actors);
- const objectMap=new Map<number,{name:string;mesh:T.Object3D}>();
- let packet:SpectatorFrame|null=null,previous:SpectatorFrame|null=null,run='',received=0,duration=250,lastTimestamp=0;
- let running=false,mode:CameraMode='follow',disposed=false,raf=0,previousTime=performance.now(),wingTime=0,geometryKey='';
- let initialized=false,focused=false,dragging=false,yaw=0,pitch=0,pointerX=0,pointerY=0,pointerId=-1;
- const keys=new Set<string>(),direction=new T.Vector3(),right=new T.Vector3(),delta=new T.Vector3(),lastTarget=new T.Vector3();
- const floorTexture=()=>{
-  const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d')!;
-  ctx.fillStyle='#30383b';ctx.fillRect(0,0,128,128);ctx.strokeStyle='#434b4d';ctx.lineWidth=1;ctx.strokeRect(.5,.5,127,127);
-  ctx.fillStyle='#495051';for(const x of [5,122])for(const y of [5,122])ctx.fillRect(x,y,2,2);
-  const texture=new T.CanvasTexture(c);texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.repeat.set(12,12);texture.colorSpace=T.SRGBColorSpace;return texture;
- };
- function buildArena(s:SpectatorFrame){
-  const id=JSON.stringify(s.sectors);if(id===geometryKey)return;geometryKey=id;
-  disposeTree(arena);arena.clear();
-  for(const sector of s.sectors){
-   // Lines come directly from the engine. The arena's finishes are illustrative.
-   const points=sector.lines.flatMap(l=>[[l[0]*scale,-l[1]*scale],[l[2]*scale,-l[3]*scale]]);
-   const xs=points.map(p=>p[0]),zs=points.map(p=>p[1]);
-   const minX=Math.min(...xs),maxX=Math.max(...xs),minZ=Math.min(...zs),maxZ=Math.max(...zs);
-   const floor=new T.Mesh(new T.PlaneGeometry(maxX-minX,maxZ-minZ),new T.MeshStandardMaterial({map:floorTexture(),roughness:.9}));
-   floor.rotation.x=-Math.PI/2;floor.position.set((minX+maxX)/2,sector.floor*scale,(minZ+maxZ)/2);arena.add(floor);
-   // Interior-facing walls become a cutaway when the observer flies outside.
-   const wallMat=new T.MeshStandardMaterial({color:0x78766f,roughness:.93,side:T.FrontSide});
-   const trimMat=new T.MeshStandardMaterial({color:0x272d2d,metalness:.35,roughness:.7});
-   for(const [x1,y1,x2,y2] of sector.lines){
-    const length=Math.hypot(x2-x1,y2-y1)*scale,height=(sector.ceiling-sector.floor)*scale;
-    const wall=new T.Mesh(new T.PlaneGeometry(length,height),wallMat);
-    wall.position.set((x1+x2)*scale/2,(sector.ceiling+sector.floor)*scale/2,-(y1+y2)*scale/2);wall.rotation.y=Math.atan2(y2-y1,x2-x1);arena.add(wall);
-    for(const h of [.1,height-.12]){const trim=new T.Mesh(new T.BoxGeometry(length,.12,.18),trimMat);trim.position.copy(wall.position);trim.position.y=sector.floor*scale+h;trim.rotation.copy(wall.rotation);arena.add(trim);}
+ const virtual=new T.PerspectiveCamera(48,4/3,.03,180),camera=new T.PerspectiveCamera();
+ const controls=new OrbitControls(virtual,canvas);controls.enableDamping=true;controls.minDistance=1.1;controls.maxDistance=16;controls.enablePan=false;
+ controls.minPolarAngle=Math.PI/6;controls.maxPolarAngle=Math.PI*5/6;
+ const fly=createFly();scene.add(fly.root);fly.root.scale.setScalar(scale);fly.root.visible=false;
+ // The decorative mesh gun is replaced by the engine's actual weapon/flash sprites.
+ const weaponGroup=new T.Group();weaponGroup.position.set(11,-5,0);fly.root.add(weaponGroup);
+ const nativeSprites=new Map<number,T.Sprite>(),textureCache=new Map<string,T.Texture>();
+ let native:NativeFrame|null=null,background:HTMLImageElement|null=null,depthTexture:T.Texture|null=null;
+ const depthUniform={value:null as T.Texture|null},sizeUniform={value:new T.Vector2(960,720)};
+ // ViZDoom's 8-bit depth is approximate. The tolerance avoids clipping the
+ // avatar on quantized edges; the native environment itself is never rebuilt.
+ function occlusion(material:T.Material,weapon=false){material.onBeforeCompile=shader=>{
+  shader.uniforms.nativeDepth=depthUniform;shader.uniforms.nativeSize=sizeUniform;
+  shader.vertexShader='varying float spectatorDistance;\n'+shader.vertexShader;
+  shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nspectatorDistance = -mvPosition.z;');
+  if(material instanceof T.SpriteMaterial)shader.vertexShader=shader.vertexShader.replace('gl_Position = projectionMatrix * mvPosition;','spectatorDistance = -mvPosition.z;\ngl_Position = projectionMatrix * mvPosition;');
+  shader.fragmentShader='uniform sampler2D nativeDepth; uniform vec2 nativeSize; varying float spectatorDistance;\n'+shader.fragmentShader;
+  if(weapon)shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n// Crop the marine forearms; preserve the original pistol pixels.\nif(vMapUv.y < 0.49 || (diffuseColor.r > diffuseColor.b * 1.7 && diffuseColor.g > diffuseColor.b * 1.4 && diffuseColor.r > 0.045)) discard;');
+  shader.fragmentShader=shader.fragmentShader.replace('void main() {','void main() {\nfloat nativeD = texture2D(nativeDepth, gl_FragCoord.xy / nativeSize).r * 255.0;\nif(nativeD > 0.5 && spectatorDistance * 32.0 > nativeD * 7.4 + 18.0) discard;');
+ };material.customProgramCacheKey=()=>`native-occlusion-${material.type}-${weapon}`;}
+ fly.root.traverse(o=>{const m=(o as T.Mesh).material;if(m)(Array.isArray(m)?m:[m]).forEach(m=>occlusion(m));});
+ let packet:SpectatorFrame|null=null,run='',running=false,mode:CameraMode='follow',disposed=false,raf=0;
+ let initialized=false,focused=false,dragging=false,yaw=0,pitch=0,pointerX=0,pointerY=0,pointerId=-1,wingTime=0,previousTime=performance.now();
+ let requestAt=0,busy=false,abort:AbortController|null=null,lastGood=0,reported=false;
+ const keys=new Set<string>(),direction=new T.Vector3(),right=new T.Vector3(),lastTarget=new T.Vector3(),target=new T.Vector3();
+ function resetView(){if(!packet)return;place(fly.root,packet.player);lastTarget.copy(fly.root.position);
+  const a=packet.player.angle*Math.PI/180;virtual.position.set(fly.root.position.x-1.6*Math.cos(a)+1.8*Math.sin(a),fly.root.position.y+.7,fly.root.position.z+1.6*Math.sin(a)+1.8*Math.cos(a));
+  controls.target.copy(fly.root.position);virtual.lookAt(controls.target);controls.update();const e=new T.Euler().setFromQuaternion(virtual.quaternion,'YXZ');yaw=e.y;pitch=e.x;
+ }
+ async function requestView(now:number){
+  if(busy||!running||!packet||now-requestAt<75||document.hidden||disposed)return;
+  requestAt=now;busy=true;abort=new AbortController();const timeout=setTimeout(()=>abort?.abort(),2500);
+  virtual.getWorldDirection(direction);
+  const p=[virtual.position.x/scale,-virtual.position.z/scale,Math.max(4,virtual.position.y/scale),((Math.atan2(-direction.z,direction.x)*180/Math.PI)%360+360)%360,-Math.asin(T.MathUtils.clamp(direction.y,-1,1))*180/Math.PI];
+  const query=new URLSearchParams(['x','y','z','yaw','pitch'].map((k,i)=>[k,p[i].toFixed(4)]));
+  try{
+   const response=await fetch('/api/observer?'+query,{cache:'no-store',signal:abort.signal});
+   if(response.status===429){requestAt=performance.now()+100;return;}
+   if(!response.ok)throw new Error('Native observer unavailable');
+   const f=await response.json() as NativeFrame;if(!validFrame(f)||Date.now()-f.generated_at_ms>4000)throw new Error('Invalid native frame');
+   const [bg,depth,...art]=await Promise.all([imageAsset(f.image),imageAsset(f.depth),...f.weapon.map(w=>imageAsset(w.image))]);
+   if(disposed)return;
+   native=f;background=bg;lastGood=performance.now();reported=false;onFailure('');
+   depthTexture?.dispose();depthTexture=new T.Texture(depth);depthTexture.minFilter=T.NearestFilter;depthTexture.magFilter=T.NearestFilter;depthTexture.needsUpdate=true;depthUniform.value=depthTexture;
+   for(const [layer,sprite]of nativeSprites)if(!f.weapon.some(w=>w.layer===layer)){weaponGroup.remove(sprite);sprite.material.dispose();nativeSprites.delete(layer);}
+   for(let i=0;i<f.weapon.length;i++){
+    const w=f.weapon[i];let tex=textureCache.get(w.image);
+    if(!tex){tex=new T.Texture(art[i]);tex.colorSpace=T.SRGBColorSpace;tex.magFilter=T.NearestFilter;tex.minFilter=T.NearestFilter;tex.needsUpdate=true;textureCache.set(w.image,tex);}
+    let sprite=nativeSprites.get(w.layer);
+    if(!sprite){const mat=new T.SpriteMaterial({transparent:true,alphaTest:.05,depthWrite:w.layer===0});occlusion(mat,w.layer===0);sprite=new T.Sprite(mat);nativeSprites.set(w.layer,sprite);weaponGroup.add(sprite);}
+    sprite.material.map=tex;sprite.material.needsUpdate=true;
+    // Original weapon patches share the engine's 320×200 sprite coordinate space.
+    sprite.center.set((166-(w.sx-w.left))/w.width,1-(143-(w.sy-w.top))/w.height);
+    sprite.scale.set(w.width*.23,w.height*.23,1);sprite.renderOrder=w.layer;
    }
-  }
+  }catch{
+   if(!disposed&&performance.now()-lastGood>4000&&!reported){reported=true;onFailure('Native camera is reconnecting. The original Doom view remains available.');}
+  }finally{clearTimeout(timeout);busy=false;abort=null;}
  }
- function actor(name:string){
-  const g=new T.Group();
-  const cube=(w:number,h:number,d:number,y:number,color:number)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),new T.MeshStandardMaterial({color,roughness:.9}));m.position.y=y;g.add(m);return m;};
-  if(/Imp|Zombie|DoomPlayer/i.test(name)){
-   const color=/Imp/i.test(name)?0x975a40:0x7d8760;
-   cube(.6,.8,.38,1.03,color);cube(.35,.35,.35,1.59,0xb29d7c);
-   for(const z of [-.18,.18]){const leg=cube(.24,.62,.22,.33,0x3b4240);leg.position.z=z;}
-   for(const z of [-.32,.32]){const arm=cube(.45,.23,.2,1.02,color);arm.position.set(.3,1.02,z);}
-  }else if(/Clip|Ammo/i.test(name)){
-   cube(.52,.35,.44,.18,0x8e925d);cube(.55,.06,.47,.36,0x353d2a);
-  }else if(/Ball|Shot|Rocket|Plasma/i.test(name)){
-   const m=new T.Mesh(new T.IcosahedronGeometry(.16,1),new T.MeshBasicMaterial({color:0xffa347}));g.add(m);
-  }else{cube(.15,.15,.15,.1,0x929b9d);}
-  return g;
- }
- function resetView(){
-  if(!packet)return;
-  place(fly.root,packet.player,1.25);lastTarget.copy(fly.root.position);
-  const a=packet.player.angle*Math.PI/180;
-  camera.position.set(fly.root.position.x-2*Math.cos(a)+2.2*Math.sin(a),fly.root.position.y+.9,fly.root.position.z+2*Math.sin(a)+2.2*Math.cos(a));
-  controls.target.copy(fly.root.position);camera.lookAt(controls.target);controls.update();
-  const e=new T.Euler().setFromQuaternion(camera.quaternion,'YXZ');yaw=e.y;pitch=e.x;
- }
- const resize=new ResizeObserver(()=>{
-  const {width,height}=canvas.getBoundingClientRect();if(!width||!height)return;
-  renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();
- });resize.observe(canvas);
  canvas.tabIndex=0;
  const down=(e:PointerEvent)=>{focused=true;canvas.focus({preventScroll:true});if(mode==='free'&&!dragging){dragging=true;pointerId=e.pointerId;pointerX=e.clientX;pointerY=e.clientY;canvas.setPointerCapture(e.pointerId);}};
- const move=(e:PointerEvent)=>{if(mode!=='free'||!dragging||e.pointerId!==pointerId)return;yaw-=(e.clientX-pointerX)*.004;pitch=T.MathUtils.clamp(pitch-(e.clientY-pointerY)*.004,-1.5,1.5);pointerX=e.clientX;pointerY=e.clientY;};
- const up=()=>{dragging=false;};
- const clear=()=>{keys.clear();dragging=false;focused=false;};
+ const move=(e:PointerEvent)=>{if(mode!=='free'||!dragging||e.pointerId!==pointerId)return;yaw-=(e.clientX-pointerX)*.004;pitch=T.MathUtils.clamp(pitch-(e.clientY-pointerY)*.004,-Math.PI/3,Math.PI/3);pointerX=e.clientX;pointerY=e.clientY;};
+ const up=()=>{dragging=false;};const clear=()=>{keys.clear();dragging=false;focused=false;};
  const keydown=(e:KeyboardEvent)=>{if(!focused||mode!=='free'||e.target!==canvas)return;if(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){e.preventDefault();keys.add(e.code);}};
- const keyup=(e:KeyboardEvent)=>keys.delete(e.code);
- const context=(e:Event)=>e.preventDefault();
- const lost=(e:Event)=>{e.preventDefault();onFailure('3D graphics paused. Switch back to Doom, then reopen 3D to reconnect.');};
- canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);canvas.addEventListener('blur',clear);canvas.addEventListener('contextmenu',context);canvas.addEventListener('webglcontextlost',lost);
+ const keyup=(e:KeyboardEvent)=>keys.delete(e.code);const context=(e:Event)=>e.preventDefault();
+ canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);canvas.addEventListener('blur',clear);canvas.addEventListener('contextmenu',context);
  window.addEventListener('keydown',keydown);window.addEventListener('keyup',keyup);window.addEventListener('blur',clear);
- const visibility=()=>{clear();if(document.hidden)cancelAnimationFrame(raf);else if(!disposed){previousTime=performance.now();raf=requestAnimationFrame(draw);}};
- document.addEventListener('visibilitychange',visibility);
- function draw(now:number){
-  if(disposed)return;
-  const dt=Math.min(.05,(now-previousTime)/1000);previousTime=now;
-  if(packet){
-   const t=running?Math.min(1,(now-received)/duration):1;
-   const p=previous?interpolatePose(previous.player,packet.player,t):packet.player;
-   place(fly.root,p,1.25);fly.root.visible=true;
-   if(running)wingTime+=dt;
-   fly.animate(wingTime,running);
-   for(const o of packet.objects){
-    const entry=objectMap.get(o.id);if(!entry)continue;
-    const old=previous?.objects.find(v=>v.id===o.id&&v.name===o.name);
-    place(entry.mesh,old?interpolatePose(old,o,t):o);
-   }
-   if(!initialized){initialized=true;if(mode==='follow')resetView();}
-   if(mode==='follow'){
-    delta.copy(fly.root.position).sub(lastTarget);camera.position.add(delta);controls.target.copy(fly.root.position);controls.update(dt);
-   }
-   lastTarget.copy(fly.root.position);
-  }
-  if(mode==='free'){
-   camera.quaternion.setFromEuler(new T.Euler(pitch,yaw,0,'YXZ'));
-   camera.getWorldDirection(direction);right.crossVectors(direction,camera.up).normalize();
-   const forward=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'));
-   const sideways=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'));
-   const vertical=Number(keys.has('KeyE'))-Number(keys.has('KeyQ'));
-   const speed=dt*(keys.has('ShiftLeft')||keys.has('ShiftRight')?10:3.5);
-   camera.position.addScaledVector(direction,forward*speed).addScaledVector(right,sideways*speed);camera.position.y+=vertical*speed;
-   camera.position.clamp(new T.Vector3(-60,.1,-60),new T.Vector3(60,50,60));
-  }
-  renderer.render(scene,camera);
-  onRender?.(canvas);
-  raf=requestAnimationFrame(draw);
- }
+ const visibility=()=>{clear();if(document.hidden){cancelAnimationFrame(raf);abort?.abort();}else if(!disposed){previousTime=performance.now();raf=requestAnimationFrame(draw);}};document.addEventListener('visibilitychange',visibility);
  let onRender:((c:HTMLCanvasElement)=>void)|null=null;
+ function draw(now:number){
+  if(disposed)return;const dt=Math.min(.05,(now-previousTime)/1000);previousTime=now;
+  if(packet){
+   if(!initialized){initialized=true;resetView();}
+   const p=native?.player??packet.player;target.set(p.x*scale,p.z*scale+1.25,-p.y*scale);
+   if(mode==='follow'){virtual.position.add(target.clone().sub(lastTarget));controls.target.copy(target);controls.update(dt);}lastTarget.copy(target);
+   if(mode==='free'){
+    virtual.quaternion.setFromEuler(new T.Euler(pitch,yaw,0,'YXZ'));virtual.getWorldDirection(direction);right.crossVectors(direction,virtual.up).normalize();
+    const forward=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'));
+    const sideways=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'));
+    const speed=dt*(keys.has('ShiftLeft')||keys.has('ShiftRight')?8:2);
+    virtual.position.addScaledVector(direction,forward*speed).addScaledVector(right,sideways*speed);virtual.position.y+=(Number(keys.has('KeyE'))-Number(keys.has('KeyQ')))*speed;virtual.position.y=T.MathUtils.clamp(virtual.position.y,.15,12);
+   }
+   void requestView(now);
+  }
+  output.fillStyle='#08090b';output.fillRect(0,0,960,720);
+  if(native&&background){
+   output.imageSmoothingEnabled=false;output.drawImage(background,0,0,960,720);
+   place(fly.root,native.player);fly.root.visible=true;
+   if(running&&now-lastGood<4000)wingTime+=dt;fly.animate(wingTime,running&&now-lastGood<4000);
+   const [x,y,z,a]=native.camera,r=a*Math.PI/180;
+   camera.position.set(x*scale,z*scale,-y*scale);camera.lookAt(camera.position.x+Math.cos(r),camera.position.y,camera.position.z-Math.sin(r));
+   const [fx,fy,cx,cy]=native.projection,n=.03,f=180;
+   camera.projectionMatrix.set(2*fx/640,0,1-2*cx/640,0,0,2*fy/480,2*cy/480-1,0,0,0,-(f+n)/(f-n),-2*f*n/(f-n),0,0,-1,0);camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+   renderer.render(scene,camera);output.drawImage(overlay,0,0);
+  }
+  onRender?.(canvas);raf=requestAnimationFrame(draw);
+ }
  raf=requestAnimationFrame(draw);
  return {
-  update(s:SpectatorFrame,runId:string,timestamp:number,live:boolean){
-   running=live;
-   if(packet===s)return;
-   const continuous=run===runId&&packet?.episode===s.episode&&timestamp>lastTimestamp&&timestamp-lastTimestamp<2000&&Math.hypot(s.player.x-packet.player.x,s.player.y-packet.player.y)<256;
-   previous=continuous?packet:null;duration=continuous?Math.max(80,Math.min(1000,timestamp-lastTimestamp)):1;
-   packet=s;run=runId;lastTimestamp=timestamp;received=performance.now();
-   if(!continuous)initialized=false;
-   buildArena(s);
-   const ids=new Set(s.objects.filter(o=>o.name!=='DoomPlayer').map(o=>o.id));
-   for(const [id,entry] of objectMap)if(!ids.has(id)){actors.remove(entry.mesh);disposeTree(entry.mesh);objectMap.delete(id);}
-   for(const o of s.objects){
-    if(o.name==='DoomPlayer')continue;
-    const entry=objectMap.get(o.id);
-    if(entry&&entry.name!==o.name){actors.remove(entry.mesh);disposeTree(entry.mesh);objectMap.delete(o.id);}
-    if(!objectMap.has(o.id)){const mesh=actor(o.name);actors.add(mesh);objectMap.set(o.id,{mesh,name:o.name});}
-   }
-  },
-  setLive(value:boolean){running=value;},
-  setMode(value:CameraMode){
-   keys.clear();dragging=false;mode=value;controls.enabled=value==='follow';
-   if(value==='free'){const e=new T.Euler().setFromQuaternion(camera.quaternion,'YXZ');yaw=e.y;pitch=e.x;canvas.focus({preventScroll:true});focused=true;}
-   else{controls.target.copy(fly.root.position);controls.update();lastTarget.copy(fly.root.position);}
-  },
-  reset:resetView,
-  key(code:string,pressed:boolean){pressed?keys.add(code):keys.delete(code);},
-  renderHook(fn:typeof onRender){onRender=fn;},
-  dispose(){disposed=true;cancelAnimationFrame(raf);resize.disconnect();controls.dispose();onRender=null;disposeTree(scene);renderer.dispose();renderer.forceContextLoss();
-   canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('blur',clear);canvas.removeEventListener('contextmenu',context);canvas.removeEventListener('webglcontextlost',lost);
-   window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',visibility);
+  update(s:SpectatorFrame,runId:string,_timestamp:number,live:boolean){running=live;if(run!==runId||packet?.episode!==s.episode){initialized=false;native=null;background=null;}packet=s;run=runId;},
+  setLive(value:boolean){running=value;},setMode(value:CameraMode){keys.clear();dragging=false;mode=value;controls.enabled=value==='follow';if(value==='free'){const e=new T.Euler().setFromQuaternion(virtual.quaternion,'YXZ');yaw=e.y;pitch=e.x;canvas.focus({preventScroll:true});focused=true;}else{controls.target.copy(target);controls.update();lastTarget.copy(target);}},
+  reset:resetView,key(code:string,pressed:boolean){pressed?keys.add(code):keys.delete(code);},renderHook(fn:typeof onRender){onRender=fn;},
+  telemetry(){return native?.game??null;},
+  dispose(){disposed=true;cancelAnimationFrame(raf);abort?.abort();controls.dispose();onRender=null;depthTexture?.dispose();textureCache.forEach(t=>t.dispose());
+   const materials=new Set<T.Material>(),geometries=new Set<T.BufferGeometry>();scene.traverse(o=>{const m=o as T.Mesh;if(m.geometry)geometries.add(m.geometry);if(m.material)(Array.isArray(m.material)?m.material:[m.material]).forEach(x=>materials.add(x));});materials.forEach(m=>m.dispose());geometries.forEach(g=>g.dispose());renderer.dispose();renderer.forceContextLoss();
+   canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('blur',clear);canvas.removeEventListener('contextmenu',context);window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',visibility);
   }
  };
 }

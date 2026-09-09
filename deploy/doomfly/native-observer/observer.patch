@@ -1,0 +1,152 @@
+--- a/src/vizdoom/src/viz_main.h
++++ b/src/vizdoom/src/viz_main.h
+@@ -25,6 +25,10 @@
+ #define __VIZ_MAIN_H__
+ 
+ #include "viz_defines.h"
++
++// DOOMFLY observer: render-only override, never an actor or an input.
++extern bool doomflyObserverActive;
++extern double doomflyObserverPose[5];
+ 
+ extern int vizTime;
+ extern bool vizNextTic;
+--- a/src/vizdoom/src/viz_main.cpp
++++ b/src/vizdoom/src/viz_main.cpp
+@@ -524,3 +524,92 @@
+ 
+     VIZ_PrintFuncMsg(func, debug_msg);
+ }
++
++
++// DOOMFLY private observer protocol. Enabled only by a process-local output path.
++// Called while VIZ_MQTic waits: no ticker, action, save/load or RNG is invoked here.
++#include <vector>
++#include <sstream>
++#include <cmath>
++#include "r_state.h"
++#include "r_data/sprites.h"
++#include "textures/textures.h"
++#include "viz_depth.h"
++#include "d_player.h"
++
++bool doomflyObserverActive = false;
++double doomflyObserverPose[5] = {0, 0, 41, 0, 0};
++extern fixed_t viewx, viewy, FocalLengthX, FocalLengthY, centerxfrac, centeryfrac;
++extern int viewpitch, viewwindowx, viewwindowy;
++
++CCMD(doomfly_view)
++{
++    const char *output = getenv("DOOMFLY_OBSERVER_OUTPUT");
++    if (!output || !*output || argv.argc() != 7 || !screen || *viz_screen_format != VIZ_SCREEN_RGB24) return;
++    char *end = NULL;
++    unsigned long nonce = strtoul(argv[1], &end, 10);
++    if (!end || *end || !nonce || nonce > 2147483647UL) return;
++    for (int i=0; i<5; ++i) {
++        doomflyObserverPose[i] = strtod(argv[i+2], &end);
++        if (!end || *end || !std::isfinite(doomflyObserverPose[i])) return;
++    }
++    if (fabs(doomflyObserverPose[0]) > 8192 || fabs(doomflyObserverPose[1]) > 8192 ||
++        fabs(doomflyObserverPose[2]) > 2048 || doomflyObserverPose[3] < 0 ||
++        doomflyObserverPose[3] >= 360 || fabs(doomflyObserverPose[4]) > 60) return;
++    bool weapon = r_drawplayersprites;
++    r_drawplayersprites = false;
++    doomflyObserverActive = true;
++    VIZ_D_ScreenDisplay();
++    std::vector<BYTE> rgb(vizScreenSize), depth(vizScreenChannelSize, 255), spritesRGBA;
++    screen->Lock(true);
++    VIZ_CopyBuffer(rgb.data());
++    if (vizDepthMap) memcpy(depth.data(), vizDepthMap->getBuffer(), depth.size());
++    PalEntry *palette = screen->GetPalette();
++    std::ostringstream header;
++    header << "{\"version\":1,\"nonce\":" << nonce << ",\"width\":" << vizScreenWidth
++           << ",\"height\":" << vizScreenHeight << ",\"camera\":[" << double(viewx)/FRACUNIT << ","
++           << double(viewy)/FRACUNIT << "," << double(viewz)/FRACUNIT << "," << double(viewangle)*(360.0/4294967296.0)
++           << "," << double(viewpitch)*(360.0/4294967296.0) << "],\"projection\":["
++           << double(FocalLengthX)/FRACUNIT << "," << double(FocalLengthY)/FRACUNIT << ","
++           << double(centerxfrac)/FRACUNIT+viewwindowx << "," << double(centeryfrac)/FRACUNIT+viewwindowy << "],\"weapon\":[";
++    player_t *player = players[consoleplayer].mo ? &players[consoleplayer] : NULL;
++    bool comma = false;
++    if (player) for (int layer=ps_weapon; layer<=ps_flash; ++layer) {
++        pspdef_t *psp = &player->psprites[layer];
++        if (!psp->state || (unsigned)psp->sprite >= sprites.Size()) continue;
++        spritedef_t &sprite = sprites[psp->sprite];
++        if ((unsigned)psp->frame >= sprite.numframes) continue;
++        spriteframe_t &frame = SpriteFrames[sprite.spriteframes+psp->frame];
++        FTexture *tex = TexMan(frame.Texture[0]);
++        if (!tex || tex->UseType == FTexture::TEX_Null) continue;
++        int w=tex->GetWidth(), h=tex->GetHeight();
++        if (w<=0 || h<=0 || w>512 || h>512) continue;
++        if (comma) header << ",";
++        comma = true;
++        header << "{\"layer\":" << layer << ",\"sprite\":" << psp->sprite << ",\"frame\":" << psp->frame
++               << ",\"tics\":" << psp->tics << ",\"width\":" << w << ",\"height\":" << h
++               << ",\"left\":" << tex->LeftOffset << ",\"top\":" << tex->TopOffset
++               << ",\"sx\":" << double(psp->sx)/FRACUNIT << ",\"sy\":" << double(psp->sy)/FRACUNIT
++               << ",\"flip\":" << (frame.Flip&1) << "}";
++        const BYTE *pixels = tex->GetPixels();
++        for (int y=0; y<h; ++y) for (int x=0; x<w; ++x) {
++            BYTE c = pixels[x*h+y];
++            spritesRGBA.push_back(palette[c].r); spritesRGBA.push_back(palette[c].g);
++            spritesRGBA.push_back(palette[c].b); spritesRGBA.push_back(c ? 255 : 0);
++        }
++    }
++    header << "]}";
++    screen->Unlock();
++    doomflyObserverActive = false;
++    r_drawplayersprites = weapon;
++    // Restore the ordinary first-person screen before the next shared-memory update.
++    VIZ_D_ScreenDisplay();
++    std::string temporary = std::string(output)+".tmp", metadata = header.str();
++    FILE *f = fopen(temporary.c_str(), "wb");
++    if (!f) return;
++    unsigned int length = (unsigned int)metadata.size();
++    fwrite("DFVIEW01", 1, 8, f); fwrite(&length, 4, 1, f);
++    fwrite(metadata.data(), 1, length, f); fwrite(rgb.data(), 1, rgb.size(), f);
++    fwrite(depth.data(), 1, depth.size(), f); fwrite(spritesRGBA.data(), 1, spritesRGBA.size(), f);
++    if (fclose(f)==0) rename(temporary.c_str(), output);
++}
+--- a/src/vizdoom/src/r_utility.cpp
++++ b/src/vizdoom/src/r_utility.cpp
+@@ -55,6 +55,8 @@
+ #include "r_renderer.h"
+ #include "r_data/colormaps.h"
+ #include "farchive.h"
++//VIZDOOM_CODE
++#include "viz_main.h"
+ 
+ 
+ // EXTERNAL DATA DECLARATIONS ----------------------------------------------
+@@ -872,6 +874,19 @@
+ 
+ 	R_InterpolateView (player, r_TicFrac, iview);
+ 
++	//VIZDOOM_CODE: observer-only viewpoint; actor, player and interpolation state stay intact.
++	if (doomflyObserverActive)
++	{
++		viewx = fixed_t(doomflyObserverPose[0] * FRACUNIT);
++		viewy = fixed_t(doomflyObserverPose[1] * FRACUNIT);
++		viewz = fixed_t(doomflyObserverPose[2] * FRACUNIT);
++		viewangle = angle_t(doomflyObserverPose[3] * (4294967296.0 / 360.0));
++		viewpitch = int(doomflyObserverPose[4] * (4294967296.0 / 360.0));
++		viewsector = R_PointInSubsector(viewx, viewy)->sector;
++		r_showviewer = false;
++	}
++
++
+ #ifdef TEST_X
+ 	viewx = TEST_X;
+ 	viewy = TEST_Y;
+--- a/src/vizdoom/src/viz_message_queue.cpp
++++ b/src/vizdoom/src/viz_message_queue.cpp
+@@ -116,7 +116,9 @@
+ 
+             case VIZ_MSG_CODE_COMMAND:
+                 if(msg.command[0] != '\0') VIZ_Command(strdup(msg.command));
+-                VIZ_CVARsUpdate();
++                // Render-only observer commands do not change CVARs. Reapplying
++                    // r_maxparticles would erase live particles after each camera render.
++                    if (strncmp(msg.command, "doomfly_view ", 13) != 0) VIZ_CVARsUpdate();
+                 break;
+ 
+             case VIZ_MSG_CODE_CLOSE:

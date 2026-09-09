@@ -12,12 +12,14 @@ export default function FlySpectator({data,live}:{data:Live|null;live:boolean}){
  const [error,setError]=useState(''),[mode,setMode]=useState<CameraMode>('follow'),[expanded,setExpanded]=useState(false);
  const [recording,setRecording]=useState(false),[elapsed,setElapsed]=useState(0),[clip,setClip]=useState<Clip|null>(null);
  const [canRecord,setCanRecord]=useState(false);
+ const [nativeGame,setNativeGame]=useState<ReturnType<SpectatorScene['telemetry']>>(null);
+ useEffect(()=>{const t=setInterval(()=>setNativeGame(scene.current?.telemetry()??null),250);return()=>clearInterval(t);},[]);
  const mounted=useRef(false),began=useRef(0);
  const stop=()=>{if(recorder.current?.state==='recording')recorder.current.stop();};
  useEffect(()=>{
   mounted.current=true;
   setCanRecord(typeof MediaRecorder!=='undefined'&&!!HTMLCanvasElement.prototype.captureStream);
-  try{scene.current=createSpectator(canvas.current!,message=>{setError(message);stop();});}catch{setError('This browser could not start 3D graphics. The normal Doom view is still available.');}
+  try{scene.current=createSpectator(canvas.current!,message=>{setError(message);if(message)stop();});}catch{setError('This browser could not start 3D graphics. The normal Doom view is still available.');}
   const visibility=()=>{if(document.hidden)stop();};
   const escape=(e:KeyboardEvent)=>{if(e.key==='Escape')setExpanded(false);};
   document.addEventListener('visibilitychange',visibility);window.addEventListener('keydown',escape);
@@ -44,13 +46,13 @@ export default function FlySpectator({data,live}:{data:Live|null;live:boolean}){
    if(!mime)throw new Error('No supported recording format');
    scene.current.renderHook(source=>{
     ctx.fillStyle='#080b0d';ctx.fillRect(0,0,1280,720);
-    const fit=Math.min(1280/source.width,720/source.height),w=source.width*fit,h=source.height*fit;
+    const fit=Math.max(1280/source.width,720/source.height),w=source.width*fit,h=source.height*fit;
     ctx.drawImage(source,(1280-w)/2,(720-h)/2,w,h);
-    const d=latest.current.data;
+    const d=scene.current?.telemetry();
     ctx.fillStyle='#000b';ctx.fillRect(0,0,1280,46);ctx.fillRect(0,688,1280,32);
     ctx.fillStyle='#fff';ctx.font='bold 19px monospace';ctx.fillText('DOOMFLY / 3D SPECTATOR',22,30);
-    ctx.textAlign='right';ctx.font='16px monospace';ctx.fillText(`ROUND ${d?.spectator?.episode??'—'}   HEALTH ${d?.game.health??'—'}   KILLS ${d?.game.kills??'—'}`,1258,29);
-    ctx.textAlign='left';ctx.font='14px monospace';ctx.fillStyle='#d1d5d7';ctx.fillText('REAL GAME POSITIONS · ILLUSTRATED FLY + ARENA · DECORATIVE WINGS',22,709);
+    ctx.textAlign='right';ctx.font='16px monospace';ctx.fillText(`ROUND ${d?.episode??'—'}   HEALTH ${d?.health??'—'}   KILLS ${d?.kills??'—'}`,1258,29);
+    ctx.textAlign='left';ctx.font='14px monospace';ctx.fillStyle='#d1d5d7';ctx.fillText('NATIVE DOOM ENGINE · ORIGINAL WEAPON + EFFECTS · ILLUSTRATED FLY',22,709);
    });
    const stream=output.captureStream(30);media.current=stream;
    const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:6_000_000});recorder.current=rec;
@@ -76,7 +78,7 @@ export default function FlySpectator({data,live}:{data:Live|null;live:boolean}){
   </div>
   <div className="spectator-stage">
    <canvas ref={canvas} aria-label="3D spectator arena. Orbit by dragging. In free camera mode, drag to look, WASD to move, Q and E to move down and up."/>
-   <div className="spectator-stamp"><strong>DOOMFLY</strong><span>3D SPECTATOR / VISUAL AVATAR</span></div>
+   <div className="spectator-stamp"><strong>DOOMFLY</strong><span>NATIVE DOOM / FLY AVATAR</span>{nativeGame?<span>ROUND {nativeGame.episode} · HEALTH {nativeGame.health} · KILLS {nativeGame.kills} · AMMO {nativeGame.ammo}</span>:null}</div>
    {!data?.spectator?<div className="spectator-message">WAITING FOR 3D TELEMETRY<span>The first-person feed is still available.</span></div>:!live?<div className="spectator-frozen">SIGNAL LOST · LAST RECEIVED POSITION</div>:null}
    {mode==='free'?<div className="spectator-touch" aria-label="Move spectator camera"><Button className="spectator-button" {...steer('KeyQ')} aria-label="Camera down">Q ↓</Button><Button className="spectator-button" {...steer('KeyW')} aria-label="Camera forward">W ↑</Button><Button className="spectator-button" {...steer('KeyE')} aria-label="Camera up">E ↑</Button><Button className="spectator-button" {...steer('KeyA')} aria-label="Camera left">A ←</Button><Button className="spectator-button" {...steer('KeyS')} aria-label="Camera backward">S ↓</Button><Button className="spectator-button" {...steer('KeyD')} aria-label="Camera right">D →</Button></div>:null}
   </div>
@@ -84,6 +86,6 @@ export default function FlySpectator({data,live}:{data:Live|null;live:boolean}){
   {error?<p className="spectator-notice" role="alert">{error}</p>:null}
   {clip?<a className="spectator-download" href={clip.url} download={clip.name}>↓ SAVE YOUR CLIP <span>720p · video only</span></a>:null}
   {!canRecord?<p className="spectator-notice">Use your device’s screen recorder to capture this view.</p>:null}
-  <p className="spectator-note">Actual game positions. Illustrated fly, gun and arena; animated wings are decorative. The brain still sees Doom’s first-person pixels. Recording stops at 3 minutes, on signal loss, or when you leave this tab.</p>
+  <p className="spectator-note">Native Doom arena, enemies, weapon sprites and effects. The fly avatar and wing animation are illustrative. The brain still sees Doom’s first-person pixels. Recording stops at 3 minutes, on signal loss, or when you leave this tab.</p>
  </div>;
 }

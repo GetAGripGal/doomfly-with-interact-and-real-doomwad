@@ -1,4 +1,8 @@
-# 3D spectator view
+# 3D spectator view — previous reconstruction
+
+**Superseded:** the live camera now uses the native Doom renderer. See
+[the native observer architecture and build instructions](../deploy/doomfly/native-observer/README.md).
+The implementation below documents the earlier illustrative arena for provenance.
 
 This is an observer illustration of the ongoing Doom experiment, not a fly body
 or flight simulator. The original first-person RGB remains the only visual input

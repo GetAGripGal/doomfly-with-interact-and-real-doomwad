@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "seeds": [
+    41027,
+    713,
+    20260909
+  ],
+  "ticks": 1500,
+  "renders": 216,
+  "checks": [
+    "same RGB bytes",
+    "same game counters",
+    "same objects and sectors",
+    "camera does not advance game",
+    "divergence disables observer"
+  ],
+  "pytest": "13 passed in 14.77s",
+  "initial_microbenchmark": {
+    "ticks": 500,
+    "renders": 100,
+    "mean_render_ms": 4.6043,
+    "max_render_ms": 10.4837
+  }
+}

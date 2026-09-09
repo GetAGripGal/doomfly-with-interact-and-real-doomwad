@@ -19,16 +19,18 @@ from doom.provenance import provenance
 from doom.broadcast import Broadcast,DISPLAY_FPS
 from doom.checkpoint import Checkpoints
 from doom.archive import AuditArchive
+from doom.observer import NativeObserver,ObserverUnavailable,ObserverBusy,camera_query
 ROOT=Path(__file__).resolve().parents[1]
 latest={'status':'starting','generated_at_ms':0}; stop=threading.Event()
 broadcast=Broadcast()
+observer=None
 
 def encoded_frame(rgb):
     f=io.BytesIO();Image.fromarray(rgb).save(f,format='JPEG',quality=75)
     return 'data:image/jpeg;base64,'+base64.b64encode(f.getvalue()).decode()
 
 def run_loop(args):
-    global latest
+    global latest,observer
     try:
         manifest=json.loads((ROOT/'outputs/doom/malecns_v1/manifest.json').read_text())
         training=None
@@ -60,6 +62,9 @@ def run_loop(args):
             CheckpointClass=TrainingCheckpoints
         checkpoints=CheckpointClass(args.checkpoint_dir,identity) if args.checkpoint_dir else None
         recovered=checkpoints.restore(brain,controls,game) if checkpoints and args.resume else None
+        try:observer=NativeObserver(game,args.seed,args.scenario)
+        except Exception:
+            logging.getLogger('doom-observer').exception('Native spectator unavailable; primary continues')
         run_id=str(uuid.uuid4());start=time.monotonic();tick=recovered['tick'] if recovered else 0;seq=0;last_publish=0
         neural_start=brain.sim_ms/1000;study_id=recovered.get('study_id') if recovered else run_id
         if recovered:reward.__dict__.update(recovered['reward'])
@@ -105,6 +110,7 @@ def run_loop(args):
             before=game.observation()
             if before['finished']:
                 episodes.append(before);game.new_episode()
+                if observer:observer.advance(game,reset=True)
                 if training:training.new_round()
                 before=game.observation()
             frame=game.pixels();light=retinal_samples(frame,brain.uv)
@@ -124,6 +130,7 @@ def run_loop(args):
                 applied={**action,'turn':0.,'forward':0.,'attack':False}
             else:applied=action
             score=game.act(applied);reward.observe(score,brain.sim_ms)
+            if observer:observer.advance(game,action=applied)
             after=game.observation()
             if training:training.observe(before,after)
             nonzero=abs(applied['turn'])>1e-9 or abs(applied['forward'])>1e-9 or applied['attack']
@@ -192,7 +199,9 @@ def run_loop(args):
             if remaining>0:stop.wait(remaining)
         finally:
             try:checkpoint()
-            finally:game.close();audit_handler.close();archive.close()
+            finally:
+                if observer:observer.close()
+                game.close();audit_handler.close();archive.close()
     except Exception as e:
         latest={'status':'error','generated_at_ms':int(time.time()*1000),'message':'The simulation stopped. No live data is available.'}
         broadcast.offline(latest)
@@ -201,6 +210,22 @@ def run_loop(args):
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         cache='no-store'
+        if self.path.startswith('/observer?'):
+            try:
+                pose=camera_query(self.path.split('?',1)[1])
+                if observer is None:raise ObserverUnavailable('No native observer')
+                body=observer.render(pose)
+            except ValueError:self.send_error(400);return
+            except ObserverBusy:self.send_error(429);return
+            except ObserverUnavailable:self.send_error(503);return
+            except Exception:
+                logging.getLogger('doom-observer').exception('Native observer request failed')
+                self.send_error(503);return
+            self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Cache-Control','no-store')
+            self.send_header('X-Content-Type-Options','nosniff');self.send_header('Content-Length',str(len(body)));self.end_headers()
+            try:self.wfile.write(body)
+            except (BrokenPipeError,ConnectionResetError):pass
+            return
         if self.path=='/state':body=broadcast.state
         elif self.path=='/index':body=broadcast.index
         elif self.path=='/health':body=json.dumps({k:latest.get(k) for k in ['status','run_id','sequence','generated_at_ms']},separators=(',',':')).encode()

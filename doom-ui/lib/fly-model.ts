@@ -52,12 +52,6 @@ export function createFly(){
   const points=outline.concat([outline[0]]).map(([x,z])=>new T.Vector3(x,.02,side*z));
   pivot.add(new T.Line(new T.BufferGeometry().setFromPoints(points),new T.LineBasicMaterial({color:0xafc0c4,transparent:true,opacity:.65})));
  }
- const gun=new T.Group();gun.position.set(11,-6,0);root.add(gun);
- function box(w:number,h:number,d:number,x:number,y:number,mat:T.Material){const m=new T.Mesh(new T.BoxGeometry(w,h,d),mat);m.position.set(x,y,0);gun.add(m);return m;}
- box(12,3.8,4,2,0,dark);box(8,1.2,3.5,1,2.5,silver);box(3,5,2.5,-2,-3,dark);
- rod(gun,[6,0,0],[13,0,0],1.2,silver);rod(gun,[12,0,0],[13.2,0,0],.8,dark);
- box(1,1,1,6,3,silver);
- const trigger=new T.Mesh(new T.TorusGeometry(1.3,.18,4,8),silver);trigger.position.set(0,-3,0);gun.add(trigger);
  return {root,animate:(seconds:number,moving:boolean)=>{
   // Pure decoration, measured in wall time; never a neural/muscle readout.
   wings.forEach((w,i)=>w.rotation.x=(i?1:-1)*(.08+(moving?Math.sin(seconds*2*Math.PI*23)*.36:0)));

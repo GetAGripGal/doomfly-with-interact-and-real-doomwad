@@ -5,8 +5,11 @@ import numpy as np
 import vizdoom as vzd
 
 class Game:
-    def __init__(self,seed=41027,scenario='defend_the_center',spectator=False):
+    def __init__(self,seed=41027,scenario='defend_the_center',spectator=False,observer_engine=None):
         self.game=vzd.DoomGame()
+        # Used only by the isolated spectator mirror. The neural game always
+        # uses the installed, unmodified ViZDoom executable.
+        if observer_engine:self.game.set_vizdoom_path(str(observer_engine))
         directory=Path(__file__).parent/'scenarios' if scenario=='combat_survival' else Path(vzd.scenarios_path)
         cfg=directory/(scenario+'.cfg')
         wad=directory/(scenario+'.wad')
@@ -24,7 +27,7 @@ class Game:
         self.game.set_screen_format(vzd.ScreenFormat.RGB24)
         self.game.set_screen_resolution(vzd.ScreenResolution.RES_640X480)
         self.game.set_mode(vzd.Mode.PLAYER)
-        self.game.set_depth_buffer_enabled(False);self.game.set_labels_buffer_enabled(False)
+        self.game.set_depth_buffer_enabled(bool(observer_engine));self.game.set_labels_buffer_enabled(False)
         self.spectator_enabled=spectator
         self.game.set_automap_buffer_enabled(False);self.game.set_objects_info_enabled(spectator)
         self.game.set_sectors_info_enabled(spectator)

@@ -15,6 +15,10 @@ relicense datasets, rendered game artwork, research source data or trademarks.
   copyright and permission notice is in [ViZDoom-MIT.txt](licenses/ViZDoom-MIT.txt),
   extracted from the release's `include/ViZDoom.h` header.
   Source: https://github.com/Farama-Foundation/ViZDoom/tree/1.3.0
+  The optional [native observer patch](deploy/doomfly/native-observer/observer.patch)
+  changes ViZDoom/ZDoom renderer files. It is subject to their original per-file
+  licenses, not a blanket application of the root MIT license. The build script
+  fetches the pinned official source locally; compiled engines are not committed.
   The underlying ZDoom engine includes code under other licenses. The ViZDoom
   MIT notice does not cover the entire engine. This repository distributes no
   engine executable, engine source checkout or commercial Doom IWAD. Preserve
