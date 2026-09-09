@@ -5,7 +5,7 @@ import numpy as np
 import vizdoom as vzd
 
 class Game:
-    def __init__(self,seed=41027,scenario='defend_the_center'):
+    def __init__(self,seed=41027,scenario='defend_the_center',spectator=False):
         self.game=vzd.DoomGame()
         directory=Path(__file__).parent/'scenarios' if scenario=='combat_survival' else Path(vzd.scenarios_path)
         cfg=directory/(scenario+'.cfg')
@@ -25,8 +25,9 @@ class Game:
         self.game.set_screen_resolution(vzd.ScreenResolution.RES_640X480)
         self.game.set_mode(vzd.Mode.PLAYER)
         self.game.set_depth_buffer_enabled(False);self.game.set_labels_buffer_enabled(False)
-        self.game.set_automap_buffer_enabled(False);self.game.set_objects_info_enabled(False)
-        self.game.set_sectors_info_enabled(False)
+        self.spectator_enabled=spectator
+        self.game.set_automap_buffer_enabled(False);self.game.set_objects_info_enabled(spectator)
+        self.game.set_sectors_info_enabled(spectator)
         self.game.set_available_buttons([vzd.Button.TURN_LEFT_RIGHT_DELTA,vzd.Button.MOVE_FORWARD_BACKWARD_DELTA,vzd.Button.ATTACK])
         self.game.set_button_max_value(vzd.Button.TURN_LEFT_RIGHT_DELTA,6)
         self.game.set_button_max_value(vzd.Button.MOVE_FORWARD_BACKWARD_DELTA,20)
@@ -49,6 +50,27 @@ class Game:
         reward=self.game.make_action([action['turn'],action['forward'],int(action['attack'])],1)
         self.tick+=1
         return float(reward)
+    def spectator(self):
+        """Observer-only pre-action geometry. Never passed to the neural adapter.
+
+        Coordinates/angles are unmodified engine values (Doom units/degrees).
+        No observer action, rendering or timer can advance the engine.
+        """
+        if not self.spectator_enabled:return None
+        state=self.game.get_state()
+        if state is None:return None
+        def value(name):return float(self.game.get_game_variable(getattr(vzd.GameVariable,name)))
+        objects=[{'id':int(o.id),'name':o.name,'x':float(o.position_x),'y':float(o.position_y),
+                  'z':float(o.position_z),'angle':float(o.angle)} for o in state.objects]
+        sectors=[{'floor':float(s.floor_height),'ceiling':float(s.ceiling_height),
+                  'lines':[[float(l.x1),float(l.y1),float(l.x2),float(l.y2)] for l in s.lines]}
+                 for s in state.sectors]
+        if len(objects)>256 or len(sectors)>32 or any(len(s['lines'])>128 for s in sectors):
+            return None # Unsupported map: never silently truncate the scene.
+        return {'version':1,'timing':'pre-action','episode':self.episode,'tick':self.tick,
+                'player':{k:value(v) for k,v in [('x','POSITION_X'),('y','POSITION_Y'),
+                    ('z','POSITION_Z'),('angle','ANGLE'),('pitch','PITCH')]},
+                'objects':objects,'sectors':sectors}
     def observation(self):
         g=self.game
         result={'episode':self.episode,'tick':self.tick,'finished':g.is_episode_finished(),

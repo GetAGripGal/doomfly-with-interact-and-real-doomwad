@@ -1,5 +1,5 @@
 'use client';
-import {memo,useEffect,useRef,useState} from 'react';
+import {lazy,Suspense,memo,useEffect,useRef,useState} from 'react';
 import {SiteHeader} from '@/components/site-header';
 import {Switch} from '@/components/ui/switch';
 import {PixelIcon,type PixelIconName} from '@/components/pixel-icon';
@@ -7,6 +7,7 @@ import {type Live,fresh} from '@/lib/live';
 import {useBroadcast} from '@/lib/use-broadcast';
 import {useLiveTools} from '@/lib/use-live-tools';
 import {LiveMemory} from '@/components/live-memory';
+const FlySpectator=lazy(()=>import('@/components/fly-spectator').catch(()=>({default:()=> <p className="spectator-notice">Could not load 3D. Reload the page to try again.</p>})));
 const formatter=new Intl.NumberFormat('en-US');
 const number=(x:number)=>formatter.format(x);
 const Raster=memo(function Raster({data}:{data:Live}){
@@ -23,6 +24,7 @@ const Retina=memo(function Retina({data}:{data:Live}){return <><svg className="r
 function Control({icon,label,value,active}:{icon:PixelIconName;label:string;value:string;active:boolean}){return <div className={`control-key ${active?'is-active':''}`}><PixelIcon name={icon}/><span>{label}</span><strong>{value}</strong></div>}
 export default function LiveDoom(){
  const {data,error,now}=useBroadcast();
+ const [spectator,setSpectator]=useState(false);
  const [retina,setRetina]=useState(true);const [activity,setActivity]=useState(true);
  const live=fresh(data,now)&&!error;const bci=data?.decoder==='bci';
  const mapping=(type:string)=>bci?(type==='DNp20'?'R − L → turn':type==='DNpe017'?'Rate → move; spike → fire':type==='PPL101'?'Reinforcement readout':type==='MBON11'?'Memory output readout':'Biological comparison'):(type==='DNa02'?'R − L → turn':type==='DNp09'?'Forward':type==='MDN'?'Backward':type==='MN9'?'Spike → fire':'Visual comparison');
@@ -34,9 +36,10 @@ export default function LiveDoom(){
   <section className="cabinet" aria-label="Live neural Doom experiment">
    <div className="game-column" id="game">
     <div className="window-bar"><span><PixelIcon name="screen"/> DOOM.EXE<span className={`game-status ${live?'is-live':''}`} role="img" aria-label={live?'Broadcast live':'Broadcast offline'} title={live?'Broadcast live':'Broadcast offline'}/></span><span className="frame-meta">ROUND {data?String(data.game.episode).padStart(2,'0'):'—'} <span className="meta-separator">/</span> FRAME {data?number(data.sequence):'—'}</span></div>
-    <div className="screen">{data?<img src={data.frame} width={640} height={480} alt="Live Doom frame supplied to the modeled fly visual system"/>:<div className="screen-placeholder"><PixelIcon name="signal"/><h2>NO SIGNAL</h2><p>{error}</p></div>}
+    <div className="view-selector"><span>VIEW</span><button type="button" aria-pressed={!spectator} onClick={()=>setSpectator(false)}>DOOM POV</button><button type="button" aria-pressed={spectator} onClick={()=>setSpectator(true)}>3D FLY / CAMERA</button></div>
+    {spectator?<Suspense fallback={<div className="screen-placeholder">LOADING 3D…</div>}><FlySpectator data={data} live={live}/></Suspense>:<div className="screen">{data?<img src={data.frame} width={640} height={480} alt="Live Doom frame supplied to the modeled fly visual system"/>:<div className="screen-placeholder"><PixelIcon name="signal"/><h2>NO SIGNAL</h2><p>{error}</p></div>}
      {data&&!live?<div className="offline-overlay"><PixelIcon name="signal"/><strong>SIGNAL LOST</strong><span>Last frame · {new Date(data.generated_at_ms).toLocaleTimeString()}</span><span>Waiting for the simulation host</span></div>:null}
-    </div>
+    </div>}
    </div>
    <aside className="live-telemetry" aria-label="Live game statistics and neural controls">
     <div className="telemetry-heading"><span>LIVE TELEMETRY</span><PixelIcon name="signal"/></div>

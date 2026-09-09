@@ -43,7 +43,7 @@ def run_loop(args):
             manifest['additional_R8_inputs']=len(brain.r8)
         else:brain=NativeBrain(ROOT/'outputs/doom/malecns_v1/graph.npz')
         phase=('training' if args.learning else 'frozen-control') if training else 'baseline'
-        controls=NeuralControls(manifest['readouts'],mode=args.decoder);game=Game(seed=args.seed,scenario=args.scenario)
+        controls=NeuralControls(manifest['readouts'],mode=args.decoder);game=Game(seed=args.seed,scenario=args.scenario,spectator=True)
         origin=provenance(ROOT/'outputs/doom/malecns_v1/graph.npz',BUILD,game.assets)
         if training:
             origin['candidate']=candidate_provenance(brain,ROOT)
@@ -108,6 +108,7 @@ def run_loop(args):
                 if training:training.new_round()
                 before=game.observation()
             frame=game.pixels();light=retinal_samples(frame,brain.uv)
+            spectator=game.spectator() # Same pre-action state as RGB; observer path only.
             if args.condition=='blank_vision':light.fill(0)
             if args.condition=='frozen_vision':
                 if frozen is None:frozen=light.copy()
@@ -182,6 +183,7 @@ def run_loop(args):
                     'continuation_of':run_record['continuation_of'],'recovery':run_record['recovery'],
                     'hosting':'local broadcaster; unavailable if host sleeps or disconnects'}}
                 if training:latest['learning']=event['learning']
+                if spectator is not None:latest['spectator']=spectator
                 broadcast.publish(latest)
                 last_publish=now;window_counts.fill(0);window_ms=0
             if checkpoints and now-last_checkpoint>=args.checkpoint_seconds:

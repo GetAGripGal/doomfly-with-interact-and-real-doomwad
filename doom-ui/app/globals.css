@@ -172,3 +172,26 @@
 .live-memory a{color:#fff;text-decoration:underline;text-underline-offset:3px}
 .hud-model{flex-wrap:wrap;gap:6px}
 @media(max-width:600px){.live-memory{padding:12px}.memory-metrics{gap:8px}.memory-metrics strong{font-size:18px}.memory-metrics small{display:block;margin-top:3px}.memory-metrics span{font-size:8px}.memory-plots{grid-template-columns:1fr;gap:16px}.live-memory .panel-caption{font-size:9px}}
+
+/* Observer-only 3D camera. No overlay covers the first-person weapon. */
+.view-selector{display:flex;align-items:center;gap:14px;padding:8px 12px;border-bottom:1px solid #4b4b4b;font:12px var(--font-pixel);min-height:38px}
+.view-selector>span{color:#888;margin-right:2px}.view-selector button{padding:4px 0;background:none;border:0;color:#8b8b8b;cursor:pointer}
+.view-selector button[aria-pressed=true]{color:#fff;text-decoration:underline;text-underline-offset:5px}
+.view-selector button:focus-visible,.spectator-button:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.spectator{background:#080b0d;color:#fff}.spectator-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;flex-wrap:wrap;background:#090909;border-bottom:1px solid #333}
+.spectator-modes{display:flex;gap:5px}.spectator .spectator-button{height:30px;min-height:30px;border:1px solid #555;border-radius:0;background:#080808;color:#ccc;font:11px var(--font-pixel);padding:4px 8px;box-shadow:none;cursor:pointer;touch-action:none}
+.spectator .spectator-button:hover,.spectator .spectator-button[aria-pressed=true]{background:#fff;color:#000;border-color:#fff}.spectator .spectator-button:disabled{opacity:.4;cursor:not-allowed}
+.spectator .record-button{border-color:#aaa;color:#fff}.spectator-stage{position:relative;height:min(450px,calc(100svh - 270px));min-height:240px;overflow:hidden}
+.spectator-stage canvas{display:block;width:100%;height:100%;touch-action:none;outline-offset:-3px;cursor:grab}.spectator-stage canvas:active{cursor:grabbing}
+.spectator-stamp{position:absolute;top:14px;left:14px;display:flex;gap:6px;flex-direction:column;pointer-events:none;text-shadow:0 2px 5px #000}
+.spectator-stamp strong{font:18px var(--font-pixel);letter-spacing:1px}.spectator-stamp span{font:9px var(--font-geist-mono);letter-spacing:1px;color:#c6cecf}
+.spectator-caption{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;font:10px var(--font-geist-mono);color:#b9bfc1;border-top:1px solid #333;line-height:1.6}
+.spectator-caption>span:last-child{white-space:nowrap;color:#777}.spectator-note{font:11px/1.6 var(--font-geist-mono);color:#888;margin:0;padding:0 12px 10px}
+.spectator-message{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;font:14px var(--font-pixel);background:#090b0dec;text-align:center;padding:20px}.spectator-message span{font:12px var(--font-geist-mono);color:#999}
+.spectator-frozen{position:absolute;left:0;right:0;bottom:0;background:#000c;padding:10px;text-align:center;font:11px var(--font-pixel);pointer-events:none}
+.spectator-notice{padding:10px 12px;margin:0;font:12px/1.5 var(--font-geist-mono);color:#ddd}.spectator-download{display:flex;gap:16px;align-items:center;margin:4px 12px 12px;border:1px solid white;padding:12px;font:13px var(--font-pixel)}.spectator-download span{font:11px var(--font-geist-mono);color:#999}
+.spectator-touch{position:absolute;right:12px;bottom:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;opacity:.8}.spectator .spectator-touch .spectator-button{width:39px;height:35px;font-size:10px}
+.spectator-expanded{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column}.spectator-expanded .spectator-stage{height:auto;min-height:0;flex:1}.spectator-expanded .spectator-toolbar{padding:12px}.spectator-expanded .spectator-note{max-width:900px}.spectator-expanded .spectator-caption{font-size:12px}
+@media(max-width:800px){.spectator-stage{height:300px;min-height:220px}.spectator-toolbar{gap:5px}.spectator .spectator-button{padding:4px 6px;font-size:10px}.spectator-caption{font-size:9px;gap:8px}.spectator-stamp strong{font-size:15px}.spectator-note{font-size:10px}.view-selector{font-size:11px}.spectator-expanded .spectator-stage{min-height:0;height:auto}.spectator-touch{right:8px;bottom:10px}}
+@media(min-width:1100px){.spectator-touch{opacity:.35}.spectator-touch:hover{opacity:1}}
+@media(prefers-reduced-motion:reduce){.spectator *{scroll-behavior:auto}}

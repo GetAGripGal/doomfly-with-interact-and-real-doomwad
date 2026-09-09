@@ -1,0 +1,27 @@
+{
+  "comparison": "Unmodified prior Game vs spectator-enabled Game; identical prescribed engine actions (test only, never live controls)",
+  "results": [
+    {
+      "seed": 41027,
+      "ticks": 700,
+      "round_resets": 1,
+      "identical_rgb_state_rewards": true,
+      "rgb_sequence_sha256": "c23a104faad8f0c033ef2b149930e1c1d2f226a73ffb11b5ff0d089eda248872"
+    },
+    {
+      "seed": 41028,
+      "ticks": 700,
+      "round_resets": 1,
+      "identical_rgb_state_rewards": true,
+      "rgb_sequence_sha256": "2be8573194174a799bfe3cde0cf536ad9586642cef4e7c544b19f1e2dd3b7a1c"
+    },
+    {
+      "seed": 41029,
+      "ticks": 700,
+      "round_resets": 1,
+      "identical_rgb_state_rewards": true,
+      "rgb_sequence_sha256": "35d64ea01753e49c28c6ad717dc08e9c5591ad895d9adac71c3d41ddc4a5f466"
+    }
+  ],
+  "passed": true
+}

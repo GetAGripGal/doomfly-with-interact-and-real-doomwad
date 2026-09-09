@@ -54,6 +54,7 @@ class Broadcast:
             'audit', 'reward']}
         frame['luminance'] = data['retina']['luminance']
         if 'learning' in data:frame['learning'] = data['learning']
+        if 'spectator' in data:frame['spectator'] = data['spectator']
         frame['raster_bin'] = data['raster']['bins'][-1]
         self.pending.append(frame)
         # Serialize once per captured frame, never once per viewer.
