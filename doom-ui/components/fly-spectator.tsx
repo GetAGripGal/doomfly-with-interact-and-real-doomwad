@@ -52,7 +52,7 @@ export default function FlySpectator({data,live}:{data:Live|null;live:boolean}){
     ctx.fillStyle='#000b';ctx.fillRect(0,0,1280,46);ctx.fillRect(0,688,1280,32);
     ctx.fillStyle='#fff';ctx.font='bold 19px monospace';ctx.fillText('DOOMFLY / 3D SPECTATOR',22,30);
     ctx.textAlign='right';ctx.font='16px monospace';ctx.fillText(`ROUND ${d?.episode??'—'}   HEALTH ${d?.health??'—'}   KILLS ${d?.kills??'—'}`,1258,29);
-    ctx.textAlign='left';ctx.font='14px monospace';ctx.fillStyle='#d1d5d7';ctx.fillText('NATIVE DOOM ENGINE · ORIGINAL WEAPON + EFFECTS · ILLUSTRATED FLY',22,709);
+    ctx.textAlign='left';ctx.font='14px monospace';ctx.fillStyle='#d1d5d7';ctx.fillText('NATIVE DOOM + WEAPON ART · ILLUSTRATED FLY + PISTOL DEPTH',22,709);
    });
    const stream=output.captureStream(30);media.current=stream;
    const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:6_000_000});recorder.current=rec;
@@ -86,6 +86,6 @@ export default function FlySpectator({data,live}:{data:Live|null;live:boolean}){
   {error?<p className="spectator-notice" role="alert">{error}</p>:null}
   {clip?<a className="spectator-download" href={clip.url} download={clip.name}>↓ SAVE YOUR CLIP <span>720p · video only</span></a>:null}
   {!canRecord?<p className="spectator-notice">Use your device’s screen recorder to capture this view.</p>:null}
-  <p className="spectator-note">Native Doom arena, enemies, weapon sprites and effects. The fly avatar and wing animation are illustrative. The brain still sees Doom’s first-person pixels. Recording stops at 3 minutes, on signal loss, or when you leave this tab.</p>
+  <p className="spectator-note">Native Doom arena, enemies and effects. The pistol uses native artwork on an illustrated 3D body attached to the fly; flash timing comes from the engine. The fly avatar and wing animation are illustrative. The brain still sees Doom’s first-person pixels. Recording stops at 3 minutes, on signal loss, or when you leave this tab.</p>
  </div>;
 }

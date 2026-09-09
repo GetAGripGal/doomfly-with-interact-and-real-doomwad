@@ -1,15 +1,16 @@
 import * as T from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createFly} from './fly-model';
+import {createNativeWeapon} from './native-weapon';
 import type {SpectatorFrame,Pose} from './spectator';
 export type CameraMode='follow'|'free';
-type NativeFrame={version:1;nonce:number;width:640;height:480;camera:number[];projection:number[];image:string;depth:string;generated_at_ms:number;verified_ticks:number;player:Pose;game:{episode:number;tick:number;health:number;kills:number;ammo:number};weapon:{layer:number;width:number;height:number;left:number;top:number;sx:number;sy:number;flip:number;image:string}[]};
+type NativeFrame={version:1;nonce:number;width:640;height:480;camera:number[];projection:number[];image:string;depth:string;generated_at_ms:number;verified_ticks:number;player:Pose&{pitch:number};game:{episode:number;tick:number;health:number;kills:number;ammo:number};weapon:{layer:number;width:number;height:number;left:number;top:number;sx:number;sy:number;flip:number;image:string}[]};
 const scale=1/32;
 const place=(o:T.Object3D,p:Pose)=>{o.position.set(p.x*scale,p.z*scale+1.25,-p.y*scale);o.rotation.y=p.angle*Math.PI/180;};
 function imageAsset(url:string){return new Promise<HTMLImageElement>((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=url;});}
 function validFrame(v:NativeFrame){
  return v?.version===1&&v.width===640&&v.height===480&&v.camera?.length===5&&v.projection?.length===4&&
- [...v.camera,...v.projection,v.player?.x,v.player?.y,v.player?.z,v.player?.angle,v.generated_at_ms].every(Number.isFinite)&&
+ [...v.camera,...v.projection,v.player?.x,v.player?.y,v.player?.z,v.player?.angle,v.player?.pitch,v.generated_at_ms].every(Number.isFinite)&&
  v.image?.startsWith('data:image/jpeg;base64,')&&v.depth?.startsWith('data:image/png;base64,')&&Array.isArray(v.weapon)&&v.weapon.length<=2&&
  v.weapon.every(w=>[w.layer,w.width,w.height,w.left,w.top,w.sx,w.sy].every(Number.isFinite)&&w.width>0&&w.height>0&&w.width<=512&&w.height<=512&&w.image.startsWith('data:image/png;base64,'));
 }
@@ -24,23 +25,19 @@ export function createSpectator(canvas:HTMLCanvasElement,onFailure:(message:stri
  const controls=new OrbitControls(virtual,canvas);controls.enableDamping=true;controls.minDistance=1.1;controls.maxDistance=16;controls.enablePan=false;
  controls.minPolarAngle=Math.PI/6;controls.maxPolarAngle=Math.PI*5/6;
  const fly=createFly();scene.add(fly.root);fly.root.scale.setScalar(scale);fly.root.visible=false;
- // The decorative mesh gun is replaced by the engine's actual weapon/flash sprites.
- const weaponGroup=new T.Group();weaponGroup.position.set(11,-5,0);fly.root.add(weaponGroup);
- const nativeSprites=new Map<number,T.Sprite>(),textureCache=new Map<string,T.Texture>();
  let native:NativeFrame|null=null,background:HTMLImageElement|null=null,depthTexture:T.Texture|null=null;
  const depthUniform={value:null as T.Texture|null},sizeUniform={value:new T.Vector2(960,720)};
  // ViZDoom's 8-bit depth is approximate. The tolerance avoids clipping the
  // avatar on quantized edges; the native environment itself is never rebuilt.
- function occlusion(material:T.Material,weapon=false){material.onBeforeCompile=shader=>{
+ function occlusion(material:T.Material){material.onBeforeCompile=shader=>{
   shader.uniforms.nativeDepth=depthUniform;shader.uniforms.nativeSize=sizeUniform;
   shader.vertexShader='varying float spectatorDistance;\n'+shader.vertexShader;
   shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>','#include <project_vertex>\nspectatorDistance = -mvPosition.z;');
-  if(material instanceof T.SpriteMaterial)shader.vertexShader=shader.vertexShader.replace('gl_Position = projectionMatrix * mvPosition;','spectatorDistance = -mvPosition.z;\ngl_Position = projectionMatrix * mvPosition;');
   shader.fragmentShader='uniform sampler2D nativeDepth; uniform vec2 nativeSize; varying float spectatorDistance;\n'+shader.fragmentShader;
-  if(weapon)shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n// Crop the marine forearms; preserve the original pistol pixels.\nif(vMapUv.y < 0.49 || (diffuseColor.r > diffuseColor.b * 1.7 && diffuseColor.g > diffuseColor.b * 1.4 && diffuseColor.r > 0.045)) discard;');
   shader.fragmentShader=shader.fragmentShader.replace('void main() {','void main() {\nfloat nativeD = texture2D(nativeDepth, gl_FragCoord.xy / nativeSize).r * 255.0;\nif(nativeD > 0.5 && spectatorDistance * 32.0 > nativeD * 7.4 + 18.0) discard;');
- };material.customProgramCacheKey=()=>`native-occlusion-${material.type}-${weapon}`;}
+ };material.customProgramCacheKey=()=>`native-occlusion-${material.type}`;}
  fly.root.traverse(o=>{const m=(o as T.Mesh).material;if(m)(Array.isArray(m)?m:[m]).forEach(m=>occlusion(m));});
+ const weapon=createNativeWeapon(occlusion);fly.root.add(weapon.root);
  let packet:SpectatorFrame|null=null,run='',running=false,mode:CameraMode='follow',disposed=false,raf=0;
  let initialized=false,focused=false,dragging=false,yaw=0,pitch=0,pointerX=0,pointerY=0,pointerId=-1,wingTime=0,previousTime=performance.now();
  let requestAt=0,busy=false,abort:AbortController|null=null,lastGood=0,reported=false;
@@ -64,17 +61,7 @@ export function createSpectator(canvas:HTMLCanvasElement,onFailure:(message:stri
    if(disposed)return;
    native=f;background=bg;lastGood=performance.now();reported=false;onFailure('');
    depthTexture?.dispose();depthTexture=new T.Texture(depth);depthTexture.minFilter=T.NearestFilter;depthTexture.magFilter=T.NearestFilter;depthTexture.needsUpdate=true;depthUniform.value=depthTexture;
-   for(const [layer,sprite]of nativeSprites)if(!f.weapon.some(w=>w.layer===layer)){weaponGroup.remove(sprite);sprite.material.dispose();nativeSprites.delete(layer);}
-   for(let i=0;i<f.weapon.length;i++){
-    const w=f.weapon[i];let tex=textureCache.get(w.image);
-    if(!tex){tex=new T.Texture(art[i]);tex.colorSpace=T.SRGBColorSpace;tex.magFilter=T.NearestFilter;tex.minFilter=T.NearestFilter;tex.needsUpdate=true;textureCache.set(w.image,tex);}
-    let sprite=nativeSprites.get(w.layer);
-    if(!sprite){const mat=new T.SpriteMaterial({transparent:true,alphaTest:.05,depthWrite:w.layer===0});occlusion(mat,w.layer===0);sprite=new T.Sprite(mat);nativeSprites.set(w.layer,sprite);weaponGroup.add(sprite);}
-    sprite.material.map=tex;sprite.material.needsUpdate=true;
-    // Original weapon patches share the engine's 320×200 sprite coordinate space.
-    sprite.center.set((166-(w.sx-w.left))/w.width,1-(143-(w.sy-w.top))/w.height);
-    sprite.scale.set(w.width*.23,w.height*.23,1);sprite.renderOrder=w.layer;
-   }
+   weapon.update(f.weapon,art,f.player.pitch);
   }catch{
    if(!disposed&&performance.now()-lastGood>4000&&!reported){reported=true;onFailure('Native camera is reconnecting. The original Doom view remains available.');}
   }finally{clearTimeout(timeout);busy=false;abort=null;}
@@ -123,7 +110,7 @@ export function createSpectator(canvas:HTMLCanvasElement,onFailure:(message:stri
   setLive(value:boolean){running=value;},setMode(value:CameraMode){keys.clear();dragging=false;mode=value;controls.enabled=value==='follow';if(value==='free'){const e=new T.Euler().setFromQuaternion(virtual.quaternion,'YXZ');yaw=e.y;pitch=e.x;canvas.focus({preventScroll:true});focused=true;}else{controls.target.copy(target);controls.update();lastTarget.copy(target);}},
   reset:resetView,key(code:string,pressed:boolean){pressed?keys.add(code):keys.delete(code);},renderHook(fn:typeof onRender){onRender=fn;},
   telemetry(){return native?.game??null;},
-  dispose(){disposed=true;cancelAnimationFrame(raf);abort?.abort();controls.dispose();onRender=null;depthTexture?.dispose();textureCache.forEach(t=>t.dispose());
+  dispose(){disposed=true;cancelAnimationFrame(raf);abort?.abort();controls.dispose();onRender=null;depthTexture?.dispose();weapon.dispose();
    const materials=new Set<T.Material>(),geometries=new Set<T.BufferGeometry>();scene.traverse(o=>{const m=o as T.Mesh;if(m.geometry)geometries.add(m.geometry);if(m.material)(Array.isArray(m.material)?m.material:[m.material]).forEach(x=>materials.add(x));});materials.forEach(m=>m.dispose());geometries.forEach(g=>g.dispose());renderer.dispose();renderer.forceContextLoss();
    canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('blur',clear);canvas.removeEventListener('contextmenu',context);window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',visibility);
   }

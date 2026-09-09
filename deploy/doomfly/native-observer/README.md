@@ -31,11 +31,21 @@ accepts five bounded numbers; it never accepts commands or filesystem paths.
 Rendering is serialized, globally capped at 24 requests/second, and unavailable
 when the mirror is stale or mismatched. Requests cannot control the player.
 
-The browser overlays the procedural fly and original weapon sprites. Enemies,
-textures, projectiles and impact effects are rendered by Doom. There are no
-invented bullets, attack events or enemies. Weapon and monster art remain Doom
-sprites, not fabricated polygon models. Wings are decorative. Avatar occlusion
-has a small tolerance because the native 8-bit depth is approximate.
+The browser overlays the procedural fly and a pistol extruded from the native
+weapon pixels. The grip, barrel and muzzle flash inherit the fly's position,
+heading and the engine's aiming pitch; they never billboard toward the camera.
+First-person HUD offsets (sx/sy) are not applied to the fly's grip. Pistol depth
+is an illustrative interpretation because Doom supplies 2D weapon artwork, not
+a 3D gun. Native frame changes are retained; crossed flash planes are visible
+only when the engine supplies a muzzle-flash frame. Enemies, textures,
+projectiles and impact effects remain rendered by Doom. No bullets, attacks,
+hits or enemies are invented. Wings are decorative. Avatar occlusion has a
+small tolerance because the native 8-bit depth is approximate.
+
+Frontend regression checks cover translated/rotated grip and muzzle transforms,
+engine pitch, independence from camera orientation and HUD sway, volumetric
+weapon geometry, and flash removal when the native flash layer disappears.
+This presentation fix does not change the engine, neural controller or learning.
 
 The native camera has its own same-tick game counters. The main first-person
 broadcast is buffered and may show a slightly older instant. Camera requests
