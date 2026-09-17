@@ -1,3 +1,30 @@
+# Note from GetAGripGal
+
+Hi everyone! this is a fork I made to the original doomfly that allows you to actually load real doom maps from a real DOOM.WAD.
+
+This can be done by running the following command:
+```bash
+export DOOM_IWAD_PATH=... # Path to your DOOM.WAD.
+python -m doom.server --model experimental-v6 --learning --port 8766   --audit-dir outputs/doom/local-training --scenario [map_name](Default: e1m1)  --checkpoint-dir outputs/doom/local-training/checkpoints   --checkpoint-seconds 300
+```
+
+## My additions
+
+I added two features:
+* The ability to load DOOM.WAD and original doom maps.
+* The `interact` action that allows the fruitfly to interact with doors/objects once `movement = 0 & fire = true`.
+
+### Limitations
+Because the original model was made with freedoom.wad. The original checkpoints will not work. You will have to train from scratch.
+
+I also have not been able yet to allow the 3rd-person view to work.
+
+## AI Disclosure
+
+Because the original repo was absolute AI slop, I had to make heavy use of LLM's to analyze the code base and figure out what to change. (it was hell)
+
+# --- (Original Readme) ---
+
 # DOOMFLY
 
 A fly-connectome simulation connected to a live Doom-engine arena. Game frames stimulate modeled sensory neurons; activity propagates through the retained MaleCNS v1.0 wiring, and a fixed neuron-to-button interface turns, moves and fires. An experimental dopamine-gated memory rule changes a small set of existing connections during play.

@@ -35,9 +35,13 @@ def expected_action(readouts):
     left = sum(r['rate_hz'] for r in readouts if r['type'] == 'DNp20' and r['side'] == 'L')
     right = sum(r['rate_hz'] for r in readouts if r['type'] == 'DNp20' and r['side'] == 'R')
     move = sum(r['rate_hz'] for r in readouts if r['type'] == 'DNpe017')
+    forward = clipped(move * .4, 0, 20)
+    attack = any(r['spikes'] > 0 for r in readouts if r['type'] == 'DNpe017')
     return {'turn': clipped((right - left) * .12, -6, 6),
-            'forward': clipped(move * .4, 0, 20),
-            'attack': any(r['spikes'] > 0 for r in readouts if r['type'] == 'DNpe017')}
+            'forward': forward,
+            'attack': attack,
+            # Mechanical gesture (hold still + fire), not a decoded cell type.
+            'interact': bool(attack and forward == 0)}
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -99,7 +103,7 @@ def main():
             'speed_lifetime': c['speed'], 'brain_step_ms': c['brain_step_ms'],
             'episode': g['episode'], 'health': g['health'], 'kills': g['kills'], 'ammo': g['ammo'],
             'turn': s['action']['turn'], 'forward': s['action']['forward'],
-            'attack': int(s['action']['attack']), 'total_spikes': s['total_spikes'],
+            'attack': int(s['action']['attack']), 'interact': int(s['action']['interact']), 'total_spikes': s['total_spikes'],
             'population_hz': s['window_spikes'] / 166700 / (s['window_ms'] / 1000),
             'mean_luminance': statistics.mean(s['retina']['luminance']),
             'source_frame': s['input_frame_sha256']})
@@ -127,6 +131,7 @@ def main():
             # Published rates are rounded to 0.001 Hz; the decoder uses full precision.
             check('decoder_' + k, error <= .001, where)
         check('decoder_attack', expected['attack'] == e['applied']['attack'], where)
+        check('decoder_interact', expected['interact'] == e['applied']['interact'], where)
         check('action_bounds', -6 <= e['applied']['turn'] <= 6 and 0 <= e['applied']['forward'] <= 20, where)
         if prev_event and prev_event['run_id'] == e['run_id']:
             if e['tick'] != prev_event['tick'] + 1:
@@ -141,7 +146,7 @@ def main():
                     max_filter_error = max(max_filter_error, error)
                     check('spike_rate_filter', error <= .0011, where)
         events.append({'tick': e['tick'], 'neural_seconds': e['neural_ms'] / 1000,
-            'episode': e['episode'], 'attack': int(e['applied']['attack']),
+            'episode': e['episode'], 'attack': int(e['applied']['attack']), 'interact': int(e['applied']['interact']),
             'turn': e['applied']['turn'], 'forward': e['applied']['forward'],
             'readout_spikes': sum(r['spikes'] for r in e['readouts']), 'reward': e['reward'],
             'source_frame': e['source_frame_sha256'], 'input_hash': e['input_sha256']})
@@ -205,6 +210,7 @@ def main():
             'snapshot_luminance': stats(r['mean_luminance'] for r in rows),
             'distinct_sampled_input_frames': len({r['source_frame'] for r in rows}),
             'event_attack_fraction': statistics.mean(e['attack'] for e in events) if events else None,
+            'event_interact_fraction': statistics.mean(e['interact'] for e in events) if events else None,
             'event_turn_saturation_fraction': statistics.mean(abs(e['turn']) >= 5.999 for e in events) if events else None,
             'event_move_saturation_fraction': statistics.mean(e['forward'] >= 19.999 for e in events) if events else None,
             'neural_time_thirds': thirds},

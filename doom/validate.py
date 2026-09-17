@@ -30,13 +30,13 @@ def main():
         if condition=='all_edges_disconnected':
             spontaneous=np.zeros(b.n,dtype=bool);spontaneous[np.r_[b.retina,b.lamina]]=True
             assert not counts[~spontaneous].any()
-            assert action['turn']==0 and action['forward']==0 and not action['attack']
-        assert condition=='blank_vision' or counts[b.retina].sum()>0
+            assert action['turn']==0 and action['forward']==0 and not action['attack'] and not action['interact']        
+            assert condition=='blank_vision' or counts[b.retina].sum()>0
         result={'condition':condition,'neural_ms':500,'wall_seconds':round(wall,3),'node_count':b.n,'edge_count':len(b.weight),
           'silenced_edges':cut,'total_spikes':int(counts.sum()),'receptor_spikes':int(counts[b.retina].sum()),
           'active_neurons':int(np.count_nonzero(counts)),
           'input_sha256':hashlib.sha256(light.tobytes()).hexdigest(),'spike_counts_sha256':hashlib.sha256(counts.tobytes()).hexdigest(),
-          'action':{k:action[k] for k in ['turn','forward','attack']},'readouts':action['readouts']}
+          'action':{k:action[k] for k in ['turn','forward','attack','interact']},'readouts':action['readouts']}
         results.append(result);print(json.dumps({k:v for k,v in result.items() if k!='readouts'}),flush=True)
         del b;gc.collect()
     assert results[0]['input_sha256']==results[2]['input_sha256']==results[3]['input_sha256']

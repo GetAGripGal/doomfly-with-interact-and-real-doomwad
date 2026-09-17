@@ -47,3 +47,6 @@ _vizdoom.ini
 
 # Separately commissioned social banners
 output/
+
+# Avoid publishing copyrighted materials (id cant get me!!!)
+DOOM.WAD

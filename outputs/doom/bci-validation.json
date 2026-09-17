@@ -7,13 +7,30 @@
   "trials": [
     {
       "condition": "intact",
-      "input_sha256": "33e0bae604caef22a4304728f21f5f2121e596999ae1495ca6203b71bc6379ab",
+      "input_sha256": "36cf897540924c9ccc29d26de15739eccdd519e0d037534471bd7acfb5516a70",
       "action": {
-        "turn": 1.668680249041536,
-        "forward": 16.686802490415364,
-        "attack": true
+        "turn": 1.4302973563213166,
+        "forward": 18.27602177521683,
+        "attack": true,
+        "interact": false
       },
       "readouts": [
+        {
+          "index": 48,
+          "id": "10059",
+          "type": "DNp20",
+          "side": "R",
+          "spikes": 18,
+          "rate_hz": 35.757
+        },
+        {
+          "index": 146,
+          "id": "10162",
+          "type": "DNp20",
+          "side": "L",
+          "spikes": 12,
+          "rate_hz": 23.838
+        },
         {
           "index": 306,
           "id": "10331",
@@ -29,6 +46,14 @@
           "side": "R",
           "spikes": 0,
           "rate_hz": 0.0
+        },
+        {
+          "index": 489,
+          "id": "10527",
+          "type": "DNpe017",
+          "side": "L",
+          "spikes": 12,
+          "rate_hz": 23.838
         },
         {
           "index": 706,
@@ -93,30 +118,6 @@
           "side": "L",
           "spikes": 0,
           "rate_hz": 0.0
-        },
-        {
-          "index": 48,
-          "id": "10059",
-          "type": "DNp20",
-          "side": "R",
-          "spikes": 17,
-          "rate_hz": 33.771
-        },
-        {
-          "index": 146,
-          "id": "10162",
-          "type": "DNp20",
-          "side": "L",
-          "spikes": 10,
-          "rate_hz": 19.865
-        },
-        {
-          "index": 489,
-          "id": "10527",
-          "type": "DNpe017",
-          "side": "L",
-          "spikes": 10,
-          "rate_hz": 19.865
         },
         {
           "index": 142493,
@@ -128,17 +129,34 @@
         }
       ],
       "neural_ms": 500,
-      "wall_seconds": 1.187
+      "wall_seconds": 0.392
     },
     {
       "condition": "blank_vision",
       "input_sha256": "c411c207fb379b3beccac216c633ae620c51f23c78971c7d028d0266aee0cdc7",
       "action": {
-        "turn": 0.9535315708808779,
-        "forward": 5.562267496805122,
-        "attack": true
+        "turn": 0.9535315708808778,
+        "forward": 10.32992535120951,
+        "attack": true,
+        "interact": false
       },
       "readouts": [
+        {
+          "index": 48,
+          "id": "10059",
+          "type": "DNp20",
+          "side": "R",
+          "spikes": 11,
+          "rate_hz": 21.852
+        },
+        {
+          "index": 146,
+          "id": "10162",
+          "type": "DNp20",
+          "side": "L",
+          "spikes": 7,
+          "rate_hz": 13.906
+        },
         {
           "index": 306,
           "id": "10331",
@@ -154,6 +172,14 @@
           "side": "R",
           "spikes": 0,
           "rate_hz": 0.0
+        },
+        {
+          "index": 489,
+          "id": "10527",
+          "type": "DNpe017",
+          "side": "L",
+          "spikes": 7,
+          "rate_hz": 13.906
         },
         {
           "index": 706,
@@ -220,175 +246,169 @@
           "rate_hz": 0.0
         },
         {
-          "index": 48,
-          "id": "10059",
-          "type": "DNp20",
-          "side": "R",
-          "spikes": 7,
-          "rate_hz": 13.906
-        },
-        {
-          "index": 146,
-          "id": "10162",
-          "type": "DNp20",
-          "side": "L",
-          "spikes": 3,
-          "rate_hz": 5.96
-        },
-        {
-          "index": 489,
-          "id": "10527",
-          "type": "DNpe017",
-          "side": "L",
-          "spikes": 3,
-          "rate_hz": 5.96
-        },
-        {
           "index": 142493,
           "id": "555871",
           "type": "DNpe017",
           "side": "R",
-          "spikes": 4,
-          "rate_hz": 7.946
+          "spikes": 6,
+          "rate_hz": 11.919
         }
       ],
       "neural_ms": 500,
-      "wall_seconds": 0.599
+      "wall_seconds": 0.369
     },
     {
       "condition": "retina_disconnected",
-      "input_sha256": "33e0bae604caef22a4304728f21f5f2121e596999ae1495ca6203b71bc6379ab",
+      "input_sha256": "36cf897540924c9ccc29d26de15739eccdd519e0d037534471bd7acfb5516a70",
       "action": {
-        "turn": 0.9535315708808779,
-        "forward": 5.562267496805122,
-        "attack": true
+        "turn": 0.9535315708808778,
+        "forward": 10.32992535120951,
+        "attack": true,
+        "interact": false
       },
       "readouts": [
-        {
-          "index": 306,
-          "id": "10331",
-          "type": "MN9",
-          "side": "L",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 332,
-          "id": "10360",
-          "type": "DNa02",
-          "side": "R",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 706,
-          "id": "10763",
-          "type": "MDN",
-          "side": "R",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 725,
-          "id": "10783",
-          "type": "DNp09",
-          "side": "L",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 1087,
-          "id": "11177",
-          "type": "DNp09",
-          "side": "R",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 1196,
-          "id": "11288",
-          "type": "MDN",
-          "side": "L",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 1240,
-          "id": "11332",
-          "type": "MDN",
-          "side": "R",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 2194,
-          "id": "12348",
-          "type": "MDN",
-          "side": "L",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 6367,
-          "id": "16949",
-          "type": "MN9",
-          "side": "R",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 131957,
-          "id": "523769",
-          "type": "DNa02",
-          "side": "L",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
         {
           "index": 48,
           "id": "10059",
           "type": "DNp20",
           "side": "R",
+          "spikes": 11,
+          "rate_hz": 21.852
+        },
+        {
+          "index": 146,
+          "id": "10162",
+          "type": "DNp20",
+          "side": "L",
           "spikes": 7,
           "rate_hz": 13.906
         },
         {
-          "index": 146,
-          "id": "10162",
-          "type": "DNp20",
+          "index": 306,
+          "id": "10331",
+          "type": "MN9",
           "side": "L",
-          "spikes": 3,
-          "rate_hz": 5.96
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 332,
+          "id": "10360",
+          "type": "DNa02",
+          "side": "R",
+          "spikes": 0,
+          "rate_hz": 0.0
         },
         {
           "index": 489,
           "id": "10527",
           "type": "DNpe017",
           "side": "L",
-          "spikes": 3,
-          "rate_hz": 5.96
+          "spikes": 7,
+          "rate_hz": 13.906
+        },
+        {
+          "index": 706,
+          "id": "10763",
+          "type": "MDN",
+          "side": "R",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 725,
+          "id": "10783",
+          "type": "DNp09",
+          "side": "L",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 1087,
+          "id": "11177",
+          "type": "DNp09",
+          "side": "R",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 1196,
+          "id": "11288",
+          "type": "MDN",
+          "side": "L",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 1240,
+          "id": "11332",
+          "type": "MDN",
+          "side": "R",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 2194,
+          "id": "12348",
+          "type": "MDN",
+          "side": "L",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 6367,
+          "id": "16949",
+          "type": "MN9",
+          "side": "R",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 131957,
+          "id": "523769",
+          "type": "DNa02",
+          "side": "L",
+          "spikes": 0,
+          "rate_hz": 0.0
         },
         {
           "index": 142493,
           "id": "555871",
           "type": "DNpe017",
           "side": "R",
-          "spikes": 4,
-          "rate_hz": 7.946
+          "spikes": 6,
+          "rate_hz": 11.919
         }
       ],
       "neural_ms": 500,
-      "wall_seconds": 0.677
+      "wall_seconds": 0.414
     },
     {
       "condition": "all_edges_disconnected",
-      "input_sha256": "33e0bae604caef22a4304728f21f5f2121e596999ae1495ca6203b71bc6379ab",
+      "input_sha256": "36cf897540924c9ccc29d26de15739eccdd519e0d037534471bd7acfb5516a70",
       "action": {
         "turn": 0.0,
         "forward": 0.0,
-        "attack": false
+        "attack": false,
+        "interact": false
       },
       "readouts": [
+        {
+          "index": 48,
+          "id": "10059",
+          "type": "DNp20",
+          "side": "R",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 146,
+          "id": "10162",
+          "type": "DNp20",
+          "side": "L",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
         {
           "index": 306,
           "id": "10331",
@@ -402,6 +422,14 @@
           "id": "10360",
           "type": "DNa02",
           "side": "R",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 489,
+          "id": "10527",
+          "type": "DNpe017",
+          "side": "L",
           "spikes": 0,
           "rate_hz": 0.0
         },
@@ -470,30 +498,6 @@
           "rate_hz": 0.0
         },
         {
-          "index": 48,
-          "id": "10059",
-          "type": "DNp20",
-          "side": "R",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 146,
-          "id": "10162",
-          "type": "DNp20",
-          "side": "L",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
-          "index": 489,
-          "id": "10527",
-          "type": "DNpe017",
-          "side": "L",
-          "spikes": 0,
-          "rate_hz": 0.0
-        },
-        {
           "index": 142493,
           "id": "555871",
           "type": "DNpe017",
@@ -503,16 +507,16 @@
         }
       ],
       "neural_ms": 500,
-      "wall_seconds": 0.55
+      "wall_seconds": 0.269
     }
   ],
   "closed_loop": {
     "game_tics": 210,
     "neural_seconds": 6.000000000000011,
-    "wall_seconds": 16.994,
+    "wall_seconds": 7.721,
     "action_tics": 210,
-    "spikes": 2922377,
-    "kills": 3,
+    "spikes": 3371457,
+    "kills": 0,
     "samples": [
       {
         "tick": 1,
@@ -534,8 +538,8 @@
       {
         "tick": 36,
         "action": {
-          "turn": 1.9989125806742327,
-          "forward": 14.53199068652524,
+          "turn": 2.1827741877277544,
+          "forward": 20.0,
           "attack": true
         },
         "game": {
@@ -551,9 +555,9 @@
       {
         "tick": 71,
         "action": {
-          "turn": 1.3929868601213766,
-          "forward": 11.252586201162911,
-          "attack": false
+          "turn": 1.2403904724373211,
+          "forward": 20.0,
+          "attack": true
         },
         "game": {
           "episode": 1,
@@ -561,16 +565,16 @@
           "finished": false,
           "health": 100,
           "kills": 0,
-          "ammo": 22,
+          "ammo": 21,
           "score": 0.0
         }
       },
       {
         "tick": 106,
         "action": {
-          "turn": 1.2835230776785598,
-          "forward": 12.580457204971182,
-          "attack": false
+          "turn": 0.5558417999133146,
+          "forward": 20.0,
+          "attack": true
         },
         "game": {
           "episode": 1,
@@ -578,15 +582,15 @@
           "finished": false,
           "health": 100,
           "kills": 0,
-          "ammo": 20,
+          "ammo": 19,
           "score": 0.0
         }
       },
       {
         "tick": 141,
         "action": {
-          "turn": 1.1936422830046132,
-          "forward": 15.130812970817539,
+          "turn": 1.365070298843602,
+          "forward": 20.0,
           "attack": true
         },
         "game": {
@@ -594,16 +598,16 @@
           "tick": 141,
           "finished": false,
           "health": 100,
-          "kills": 1,
-          "ammo": 18,
-          "score": 1.0
+          "kills": 0,
+          "ammo": 16,
+          "score": 0.0
         }
       },
       {
         "tick": 176,
         "action": {
-          "turn": 1.6949770608184875,
-          "forward": 13.40666482436184,
+          "turn": 1.1726458892287528,
+          "forward": 18.177354652909777,
           "attack": true
         },
         "game": {
@@ -611,9 +615,9 @@
           "tick": 176,
           "finished": false,
           "health": 100,
-          "kills": 1,
-          "ammo": 16,
-          "score": 1.0
+          "kills": 0,
+          "ammo": 14,
+          "score": 0.0
         }
       }
     ]

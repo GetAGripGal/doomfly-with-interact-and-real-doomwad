@@ -127,21 +127,21 @@ def run_loop(args):
             else:counts,neural_wall=brain.step(light,steps*.1,sugar=sugar_applied)
             action=controls.decode(counts,steps*.1/1000)
             if args.condition=='controls_clamped':
-                applied={**action,'turn':0.,'forward':0.,'attack':False}
+                applied={**action,'turn':0.,'forward':0.,'attack':False,'interact':False}            
             else:applied=action
             score=game.act(applied);reward.observe(score,brain.sim_ms)
             if observer:observer.advance(game,action=applied)
             after=game.observation()
             if training:training.observe(before,after)
-            nonzero=abs(applied['turn'])>1e-9 or abs(applied['forward'])>1e-9 or applied['attack']
+            nonzero=abs(applied['turn'])>1e-9 or abs(applied['forward'])>1e-9 or applied['attack'] or applied['interact']            
             total_actions+=int(nonzero)
             event={'run_id':run_id,'recorded_at_ms':int(time.time()*1000),'scenario':args.scenario,'decoder':args.decoder,'condition':args.condition,'reward_mode':args.reward,'tick':tick,'neural_ms':round(brain.sim_ms,3),'episode':game.episode,
               'game':after,
               'input_sha256':hashlib.sha256(light.tobytes()).hexdigest(),
               'source_frame_sha256':hashlib.sha256(frame.tobytes()).hexdigest(),
               'spike_counts_sha256':hashlib.sha256(counts.tobytes()).hexdigest(),
-              'requested':{k:action[k] for k in ['turn','forward','attack']},
-              'applied':{k:applied[k] for k in ['turn','forward','attack']},
+              'requested':{k:action[k] for k in ['turn','forward','attack','interact']},
+              'applied':{k:applied[k] for k in ['turn','forward','attack','interact']},
               'readouts':action['readouts'],'reward':score,'sugar_applied':sugar_applied,
               'sugar_scheduled_for_next_step':reward.active(brain.sim_ms),'model_revision':origin['model_revision'],
               'input_episode':game.episode,'input_game_tick':game.tick-1,'output_game_tick':game.tick,
@@ -243,7 +243,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--port',type=int,default=8766)
     p.add_argument('--decoder',choices=['biological','bci'],default='bci')
-    p.add_argument('--scenario',choices=['combat_survival','defend_the_center'],default='combat_survival')
+    p.add_argument('--scenario',default='e1m1')
     p.add_argument('--audit-dir',default=str(ROOT/'outputs/doom'))
     p.add_argument('--bind',default='127.0.0.1')
     p.add_argument('--checkpoint-dir');p.add_argument('--resume',action='store_true')
@@ -258,7 +258,7 @@ def main():
         p.error('Live candidate requires intact RGB, damage reinforcement only, and the fixed BCI')
     if args.checkpoint_seconds<30:p.error('Checkpoint interval must be at least 30 seconds')
     if args.resume and not args.checkpoint_dir:p.error('--resume requires --checkpoint-dir')
-    if args.checkpoint_dir and args.scenario!='combat_survival':p.error('Recovery requires the unlimited combat arena')
+    # if args.checkpoint_dir and args.scenario!='combat_survival':p.error('Recovery requires the unlimited combat arena')
     def shutdown_signal(*_):raise KeyboardInterrupt
     signal.signal(signal.SIGTERM,shutdown_signal)
     worker=threading.Thread(target=run_loop,args=(args,),daemon=True);worker.start()

@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parents[1]
 PATH=ROOT/'outputs/doom/malecns_v1/graph.npz'
 M=json.loads((PATH.parent/'manifest.json').read_text())
 def sha(a): return hashlib.sha256(a.tobytes()).hexdigest()
-def buttons(a): return {k:a[k] for k in ['turn','forward','attack']}
+def buttons(a): return {k:a[k] for k in ['turn','forward','attack','interact']}
 def main():
     game=Game();frame=game.pixels();assets=game.assets;game.close()
     results=[]
@@ -35,8 +35,8 @@ def main():
         if condition=='all_edges_disconnected':
             direct=np.zeros(b.n,dtype=bool);direct[np.r_[b.retina,b.lamina]]=True
             assert not total[~direct].any()
-            assert a['turn']==a['forward']==0 and not a['attack']
-        result={'condition':condition,'simulation_ms':b.sim_ms,'frame_intervals':18,
+            assert a['turn']==a['forward']==0 and not a['attack'] and not a['interact']        
+            result={'condition':condition,'simulation_ms':b.sim_ms,'frame_intervals':18,
           'input_sha256':sha(light),'spikes_sha256':sha(total),'total_spikes':int(total.sum()),
           'active_neurons':int(np.count_nonzero(total)),'receptor_spikes':int(total[b.retina].sum()),
           'voltage_min_mv':float(b.v.min()),'voltage_max_mv':float(b.v.max()),
@@ -54,7 +54,8 @@ def main():
             if condition=='blank_vision':light.fill(0)
             steps=round((tick+1)*10000/35)-b.cursor
             c,_=b.step(light,steps*.1);a=d.decode(c,steps*.1/1000)
-            if condition=='controls_clamped':a={'turn':0.,'forward':0.,'attack':False}
+            if condition=='controls_clamped':a={'turn':0.,'forward':0.,'attack':False,'interact':False}
+            game.act(a);spikes+=int(c.sum());actions+=int(bool(a['turn'] or a['forward'] or a['attack'] or a['interact']));fire+=int(a['attack'])            
             game.act(a);spikes+=int(c.sum());actions+=int(bool(a['turn'] or a['forward'] or a['attack']));fire+=int(a['attack'])
         assert abs(b.sim_ms/1000-210/35)<.0001 and sha(b.weight)==initial_weights
         result={'seed':seed,'condition':condition,'game_tics':210,'neural_seconds':b.sim_ms/1000,

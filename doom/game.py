@@ -3,23 +3,42 @@ from pathlib import Path
 import hashlib
 import numpy as np
 import vizdoom as vzd
+import os
+
+
+# Real IWAD levels use engine map lumps, not a custom scenario .wad/.cfg.
+# Add more entries here if you want other built-in maps later.
+IWAD_MAPS={'e1m1':'E1M1','map01':'MAP01'}
 
 class Game:
-    def __init__(self,seed=41027,scenario='defend_the_center',spectator=False,observer_engine=None):
+    def __init__(self,seed=41027,scenario='defend_the_center',spectator=False,observer_engine=None,skill=4):
         self.game=vzd.DoomGame()
         # Used only by the isolated spectator mirror. The neural game always
         # uses the installed, unmodified ViZDoom executable.
         if observer_engine:self.game.set_vizdoom_path(str(observer_engine))
-        directory=Path(__file__).parent/'scenarios' if scenario=='combat_survival' else Path(vzd.scenarios_path)
-        cfg=directory/(scenario+'.cfg')
-        wad=directory/(scenario+'.wad')
         self.scenario=scenario
-        iwad=Path(vzd.__file__).parent/'freedoom2.wad'
-        self.game.load_config(str(cfg))
-        self.game.set_doom_scenario_path(str(wad.resolve()))
-        self.game.set_doom_game_path(str(iwad))
-        self.assets={'vizdoom_version':vzd.__version__,'scenario':scenario,
-          'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in [cfg,wad,iwad]}}
+        iwad = Path(os.environ.get('DOOM_IWAD_PATH', Path(vzd.__file__).parent / 'freedoom2.wad'))
+        is_iwad_map=scenario.lower() in IWAD_MAPS
+        if is_iwad_map:
+            # No custom scenario wad exists for a real level: borrow a base
+            # cfg purely for screen/input defaults, then load the map lump.
+            directory=Path(vzd.scenarios_path)
+            cfg=directory/'defend_the_center.cfg'
+            self.game.load_config(str(cfg))
+            self.game.set_doom_game_path(str(iwad))
+            self.game.set_doom_map(IWAD_MAPS[scenario.lower()])
+            self.game.set_doom_skill(skill)
+            self.assets={'vizdoom_version':vzd.__version__,'scenario':scenario,
+              'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in [cfg,iwad]}}
+        else:
+            directory=Path(__file__).parent/'scenarios' if scenario=='combat_survival' else Path(vzd.scenarios_path)
+            cfg=directory/(scenario+'.cfg')
+            wad=directory/(scenario+'.wad')
+            self.game.load_config(str(cfg))
+            self.game.set_doom_scenario_path(str(wad.resolve()))
+            self.game.set_doom_game_path(str(iwad))
+            self.assets={'vizdoom_version':vzd.__version__,'scenario':scenario,
+              'sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in [cfg,wad,iwad]}}
         if scenario=='combat_survival':
             import json
             self.assets['rules']=json.loads((directory/'combat_survival.json').read_text())
@@ -31,7 +50,7 @@ class Game:
         self.spectator_enabled=spectator
         self.game.set_automap_buffer_enabled(False);self.game.set_objects_info_enabled(spectator)
         self.game.set_sectors_info_enabled(spectator)
-        self.game.set_available_buttons([vzd.Button.TURN_LEFT_RIGHT_DELTA,vzd.Button.MOVE_FORWARD_BACKWARD_DELTA,vzd.Button.ATTACK])
+        self.game.set_available_buttons([vzd.Button.TURN_LEFT_RIGHT_DELTA,vzd.Button.MOVE_FORWARD_BACKWARD_DELTA,vzd.Button.ATTACK,vzd.Button.USE])
         self.game.set_button_max_value(vzd.Button.TURN_LEFT_RIGHT_DELTA,6)
         self.game.set_button_max_value(vzd.Button.MOVE_FORWARD_BACKWARD_DELTA,20)
         self.game.clear_available_game_variables()
@@ -39,7 +58,9 @@ class Game:
         self.game.add_available_game_variable(vzd.GameVariable.HEALTH)
         self.game.add_available_game_variable(vzd.GameVariable.KILLCOUNT)
         self.game.add_available_game_variable(vzd.GameVariable.AMMO2)
-        self.game.set_episode_timeout(0 if scenario=='combat_survival' else 35*60)
+        # combat_survival: unbounded. Real IWAD maps: generous cap so a level
+        # can actually be explored/finished (35 tics/sec * 60 sec * minutes).
+        self.game.set_episode_timeout(0 if scenario=='combat_survival' else 35*60*10 if is_iwad_map else 35*60)
         self.game.set_seed(seed);self.game.init()
         self.episode=0;self.tick=0;self.episodes=[];self.new_episode()
     def new_episode(self):
@@ -49,8 +70,7 @@ class Game:
         if state is None:raise RuntimeError('Episode finished; reset is required')
         return state.screen_buffer.copy()
     def act(self,action):
-        # The adapter is the only caller of make_action. No human keystrokes.
-        reward=self.game.make_action([action['turn'],action['forward'],int(action['attack'])],1)
+        reward=self.game.make_action([action['turn'],action['forward'],int(action['attack']),int(action['interact'])],1)
         self.tick+=1
         return float(reward)
     def spectator(self):

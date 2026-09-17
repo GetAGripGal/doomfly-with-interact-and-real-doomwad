@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-09-05T18:52:03Z",
+  "created_at": "2026-09-17T19:55:50Z",
   "passed": true,
   "biologically_validated": false,
   "interpretation": "Pixels affect the retained neural model. Brightness activates mapped receptors; removing their edges changes downstream activity. The selected locomotion/mouthpart readouts remained silent. This is not evidence of successful game control, realistic vision, or learning.",
@@ -15,21 +15,38 @@
     {
       "condition": "intact",
       "neural_ms": 500,
-      "wall_seconds": 1.409,
+      "wall_seconds": 0.43,
       "node_count": 166700,
       "edge_count": 25582938,
       "silenced_edges": 0,
-      "total_spikes": 241049,
-      "receptor_spikes": 129440,
-      "active_neurons": 9468,
-      "input_sha256": "33e0bae604caef22a4304728f21f5f2121e596999ae1495ca6203b71bc6379ab",
-      "spike_counts_sha256": "88e7718a4a23e093d7f8303f6f0a6abeed9ad751d18abb581276cb6c753c08ab",
+      "total_spikes": 251371,
+      "receptor_spikes": 137301,
+      "active_neurons": 9529,
+      "input_sha256": "36cf897540924c9ccc29d26de15739eccdd519e0d037534471bd7acfb5516a70",
+      "spike_counts_sha256": "f652b4c23a2e1fbe9c56b59b808299cfe3d666a205d4218d1bb46758c2c93292",
       "action": {
         "turn": 0.0,
         "forward": 0.0,
-        "attack": false
+        "attack": false,
+        "interact": false
       },
       "readouts": [
+        {
+          "index": 48,
+          "id": "10059",
+          "type": "DNp20",
+          "side": "R",
+          "spikes": 18,
+          "rate_hz": 35.757
+        },
+        {
+          "index": 146,
+          "id": "10162",
+          "type": "DNp20",
+          "side": "L",
+          "spikes": 12,
+          "rate_hz": 23.838
+        },
         {
           "index": 306,
           "id": "10331",
@@ -45,6 +62,14 @@
           "side": "R",
           "spikes": 0,
           "rate_hz": 0.0
+        },
+        {
+          "index": 489,
+          "id": "10527",
+          "type": "DNpe017",
+          "side": "L",
+          "spikes": 12,
+          "rate_hz": 23.838
         },
         {
           "index": 706,
@@ -109,27 +134,52 @@
           "side": "L",
           "spikes": 0,
           "rate_hz": 0.0
+        },
+        {
+          "index": 142493,
+          "id": "555871",
+          "type": "DNpe017",
+          "side": "R",
+          "spikes": 11,
+          "rate_hz": 21.852
         }
       ]
     },
     {
       "condition": "blank_vision",
       "neural_ms": 500,
-      "wall_seconds": 4.856,
+      "wall_seconds": 0.389,
       "node_count": 166700,
       "edge_count": 25582938,
       "silenced_edges": 0,
-      "total_spikes": 132560,
+      "total_spikes": 135364,
       "receptor_spikes": 0,
-      "active_neurons": 8576,
+      "active_neurons": 8646,
       "input_sha256": "c411c207fb379b3beccac216c633ae620c51f23c78971c7d028d0266aee0cdc7",
-      "spike_counts_sha256": "2c365d0cbb68da47f093c280f639951e68c33a6f61531e6621d2a121cb6f189e",
+      "spike_counts_sha256": "a333d73b54c57c9309ea98e42d5486077c24f6280bceea324a36c062b146981d",
       "action": {
         "turn": 0.0,
         "forward": 0.0,
-        "attack": false
+        "attack": false,
+        "interact": false
       },
       "readouts": [
+        {
+          "index": 48,
+          "id": "10059",
+          "type": "DNp20",
+          "side": "R",
+          "spikes": 11,
+          "rate_hz": 21.852
+        },
+        {
+          "index": 146,
+          "id": "10162",
+          "type": "DNp20",
+          "side": "L",
+          "spikes": 7,
+          "rate_hz": 13.906
+        },
         {
           "index": 306,
           "id": "10331",
@@ -145,6 +195,14 @@
           "side": "R",
           "spikes": 0,
           "rate_hz": 0.0
+        },
+        {
+          "index": 489,
+          "id": "10527",
+          "type": "DNpe017",
+          "side": "L",
+          "spikes": 7,
+          "rate_hz": 13.906
         },
         {
           "index": 706,
@@ -209,27 +267,52 @@
           "side": "L",
           "spikes": 0,
           "rate_hz": 0.0
+        },
+        {
+          "index": 142493,
+          "id": "555871",
+          "type": "DNpe017",
+          "side": "R",
+          "spikes": 6,
+          "rate_hz": 11.919
         }
       ]
     },
     {
       "condition": "retina_disconnected",
       "neural_ms": 500,
-      "wall_seconds": 0.962,
+      "wall_seconds": 0.435,
       "node_count": 166700,
       "edge_count": 25582938,
       "silenced_edges": 14740,
-      "total_spikes": 262033,
-      "receptor_spikes": 129473,
-      "active_neurons": 10811,
-      "input_sha256": "33e0bae604caef22a4304728f21f5f2121e596999ae1495ca6203b71bc6379ab",
-      "spike_counts_sha256": "3f6dc2ee23964e5809768fc144f4aebce95b6900d473e7754d817ecdef6c1968",
+      "total_spikes": 272674,
+      "receptor_spikes": 137310,
+      "active_neurons": 10881,
+      "input_sha256": "36cf897540924c9ccc29d26de15739eccdd519e0d037534471bd7acfb5516a70",
+      "spike_counts_sha256": "3b762079d62f3891bd01ac73424ac30d7437d707474272c7eac7393162b1a5ff",
       "action": {
         "turn": 0.0,
         "forward": 0.0,
-        "attack": false
+        "attack": false,
+        "interact": false
       },
       "readouts": [
+        {
+          "index": 48,
+          "id": "10059",
+          "type": "DNp20",
+          "side": "R",
+          "spikes": 11,
+          "rate_hz": 21.852
+        },
+        {
+          "index": 146,
+          "id": "10162",
+          "type": "DNp20",
+          "side": "L",
+          "spikes": 7,
+          "rate_hz": 13.906
+        },
         {
           "index": 306,
           "id": "10331",
@@ -245,6 +328,14 @@
           "side": "R",
           "spikes": 0,
           "rate_hz": 0.0
+        },
+        {
+          "index": 489,
+          "id": "10527",
+          "type": "DNpe017",
+          "side": "L",
+          "spikes": 7,
+          "rate_hz": 13.906
         },
         {
           "index": 706,
@@ -309,27 +400,52 @@
           "side": "L",
           "spikes": 0,
           "rate_hz": 0.0
+        },
+        {
+          "index": 142493,
+          "id": "555871",
+          "type": "DNpe017",
+          "side": "R",
+          "spikes": 6,
+          "rate_hz": 11.919
         }
       ]
     },
     {
       "condition": "all_edges_disconnected",
       "neural_ms": 500,
-      "wall_seconds": 0.616,
+      "wall_seconds": 0.278,
       "node_count": 166700,
       "edge_count": 25582938,
       "silenced_edges": 25582938,
-      "total_spikes": 307363,
-      "receptor_spikes": 129513,
+      "total_spikes": 315155,
+      "receptor_spikes": 137305,
       "active_neurons": 9349,
-      "input_sha256": "33e0bae604caef22a4304728f21f5f2121e596999ae1495ca6203b71bc6379ab",
-      "spike_counts_sha256": "3e91a5919761a2450856dfeb40444cfe0f8b40f054882ef71dd6203f5b185013",
+      "input_sha256": "36cf897540924c9ccc29d26de15739eccdd519e0d037534471bd7acfb5516a70",
+      "spike_counts_sha256": "d1d8a0b7255628211c38163662fb285eba875b9a2dfe93b2687f325946b8430e",
       "action": {
         "turn": 0.0,
         "forward": 0.0,
-        "attack": false
+        "attack": false,
+        "interact": false
       },
       "readouts": [
+        {
+          "index": 48,
+          "id": "10059",
+          "type": "DNp20",
+          "side": "R",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 146,
+          "id": "10162",
+          "type": "DNp20",
+          "side": "L",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
         {
           "index": 306,
           "id": "10331",
@@ -343,6 +459,14 @@
           "id": "10360",
           "type": "DNa02",
           "side": "R",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 489,
+          "id": "10527",
+          "type": "DNpe017",
+          "side": "L",
           "spikes": 0,
           "rate_hz": 0.0
         },
@@ -407,6 +531,14 @@
           "id": "523769",
           "type": "DNa02",
           "side": "L",
+          "spikes": 0,
+          "rate_hz": 0.0
+        },
+        {
+          "index": 142493,
+          "id": "555871",
+          "type": "DNpe017",
+          "side": "R",
           "spikes": 0,
           "rate_hz": 0.0
         }

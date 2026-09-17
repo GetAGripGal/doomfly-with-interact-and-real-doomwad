@@ -123,5 +123,8 @@ class NeuralControls:
             turn=float(np.clip((rate('DNp20','R')-rate('DNp20','L'))*.12,-6,6))
             forward=float(np.clip(rate('DNpe017')*.4,0,20))
             attack=any(counts[r['index']]>0 for r in self.readouts if r['type']=='DNpe017')
-        return {'turn':turn,'forward':forward,'attack':bool(attack),'readouts':[
+        # Mechanical gesture, not a neural readout: holding still while
+        # attack-firing doubles as "interact". No new cell type is decoded.
+        interact=bool(attack and forward==0)
+        return {'turn':turn,'forward':forward,'attack':bool(attack),'interact':interact,'readouts':[
           {**r,'spikes':int(counts[r['index']]),'rate_hz':round(float(rate),3)} for r,rate in zip(self.readouts,self.rates)]}
