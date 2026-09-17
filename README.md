@@ -5,7 +5,14 @@ Hi everyone! this is a fork I made to the original doomfly that allows you to ac
 This can be done by running the following command:
 ```bash
 export DOOM_IWAD_PATH=... # Path to your DOOM.WAD.
-python -m doom.server --model experimental-v6 --learning --port 8766   --audit-dir outputs/doom/local-training --scenario [map_name](Default: e1m1)  --checkpoint-dir outputs/doom/local-training/checkpoints   --checkpoint-seconds 300
+python -m doom.server \
+  --model experimental-v6 \
+  --learning \
+  --port 8766 \
+  --audit-dir outputs/doom/local-training \
+  --scenario [map_name](Default: e1m1) \
+  --checkpoint-dir outputs/doom/local-training/checkpoints \
+  --checkpoint-seconds 300
 ```
 
 ## My additions
